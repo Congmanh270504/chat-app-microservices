@@ -1,4 +1,4 @@
-import { createUser, getAllUsers, getUser, searchUsers } from '@/controllers/user.controller';
+import { createUser, deleteUser, editUser, getAllUsers, getUser, searchUsers } from '@/controllers/user.controller';
 import { requireAuth } from '@/middleware/require-auth';
 import { createUserSchema, searchUsersQuerySchema, userIdParamsSchema } from '@/validation/user.schema';
 import { asyncHandler, validateRequest } from '@chatapp/common';
@@ -10,3 +10,5 @@ userRouter.get('/', requireAuth, asyncHandler(getAllUsers));
 userRouter.get('/search', requireAuth, validateRequest({ query: searchUsersQuerySchema }), asyncHandler(searchUsers));
 userRouter.get('/:id', requireAuth, validateRequest({ params: userIdParamsSchema }), asyncHandler(getUser));
 userRouter.post('/', validateRequest({ body: createUserSchema }), asyncHandler(createUser));
+userRouter.put('/:id', requireAuth, validateRequest({ params: userIdParamsSchema, body: createUserSchema }), asyncHandler(editUser));
+userRouter.delete('/:id', requireAuth, validateRequest({ params: userIdParamsSchema }), asyncHandler(deleteUser));

@@ -19,7 +19,7 @@ interface UserDocument {
 }
 
 export const userRepository = {
-  async upsertUser(payload: UserCreatedPayload) {
+  async editUser(payload: UserCreatedPayload) {
     const collection = await getCollection();
     await collection.updateOne(
       { _id: payload.id },

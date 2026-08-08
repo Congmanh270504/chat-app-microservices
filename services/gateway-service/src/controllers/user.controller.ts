@@ -37,6 +37,17 @@ export const createUser: AsyncHandler = async (req, res, next) => {
   }
 };
 
+export const editUser: AsyncHandler = async (req, res, next) => {
+  try {
+    const { id } = userIdParamsSchema.parse(req.params);
+    const payload = createUserSchema.parse(req.body);
+    const response = await userProxyService.editUser(id, payload);
+    res.json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const searchUsers: AsyncHandler = async (req, res, next) => {
   try {
     const user = getAuthenticatedUser(req);
@@ -50,6 +61,16 @@ export const searchUsers: AsyncHandler = async (req, res, next) => {
       exclude: sanitizedExclude,
     });
     res.json({ data: users });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteUser: AsyncHandler = async (req, res, next) => {
+  try {
+    const { id } = userIdParamsSchema.parse(req.params);
+    const response = await userProxyService.deleteUser(id);
+    res.json(response);
   } catch (error) {
     next(error);
   }

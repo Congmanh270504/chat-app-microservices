@@ -1,6 +1,6 @@
 import { DataTypes, Model } from 'sequelize';
 
-import type { User } from '@/types/user';
+import { User, Role } from '@/types/user';
 import type { Optional } from 'sequelize';
 
 import { sequelize } from '@/db/sequelize';
@@ -11,9 +11,12 @@ export class UserModel extends Model<User, UserCreationAttributes> implements Us
   declare id: string;
   declare email: string;
   declare displayName: string;
+  declare image_url?: string;
+  declare role: Role;
   declare createdAt: Date;
   declare updatedAt: Date;
 }
+
 
 UserModel.init(
   {
@@ -34,6 +37,15 @@ UserModel.init(
     displayName: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    image_url: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    role: {
+      type: DataTypes.ENUM(Role.USER, Role.ADMIN, Role.MODERATOR),
+      allowNull: false,
+      defaultValue: Role.USER,
     },
     createdAt: {
       type: DataTypes.DATE,

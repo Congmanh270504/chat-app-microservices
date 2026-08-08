@@ -7,7 +7,9 @@ export interface AuthUserRegisteredPayload extends EventPayload {
   id: string;
   email: string;
   displayName: string;
-  createdAt: string;
+  image_url?: string;
+  role: string;
+  createdAt?: string;
 }
 
 export type AuthRegisteredEvent = OutboundEvent<

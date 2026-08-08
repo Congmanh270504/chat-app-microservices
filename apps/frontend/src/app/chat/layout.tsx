@@ -3,10 +3,7 @@ import { ChatList } from '@/components/chat/chat-list';
 
 export default function ChatLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-background">
-      {/* Sidebar */}
-      <ChatSidebar />
-
+    <div>
       {/* Messages List Panel */}
       <div className="w-[350px] border-r flex flex-col h-full bg-background/95">
         <ChatList />
@@ -23,9 +20,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
           }}
         />
 
-        <div className="relative z-10 flex flex-col h-full">
-          {children}
-        </div>
+        <div className="relative z-10 flex flex-col h-full">{children}</div>
       </div>
     </div>
   );

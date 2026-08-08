@@ -9,6 +9,8 @@ const toDomainUser = (model: UserModel): User => ({
   id: model.id,
   email: model.email,
   displayName: model.displayName,
+  image_url: model.image_url,
+  role: model.role,
   createdAt: model.createdAt,
   updatedAt: model.updatedAt,
 });
@@ -63,13 +65,32 @@ export class UserRepository {
         id: payload.id,
         email: payload.email,
         displayName: payload.displayName,
-        createdAt: new Date(payload.createdAt),
-        updatedAt: new Date(payload.createdAt),
+        image_url: payload.image_url,
+        role: payload.role,
+        createdAt: payload.createdAt ? new Date(payload.createdAt) : new Date(),
+        updatedAt: payload.createdAt ? new Date(payload.createdAt) : new Date(),
       },
       { returning: true },
     );
 
     return toDomainUser(user);
+  }
+
+  async editUser(id: string, payload: CreateUserInput) {
+    const user = await UserModel.update(
+      {
+        email: payload.email,
+        role: payload.role,
+        displayName: payload.displayName,
+        image_url:payload.image_url,
+      },
+      { where: { id }, returning: true },
+    );
+    return toDomainUser(user[1][0]);
+  }
+
+  async deleteUser(id: string) {
+    return UserModel.destroy({ where: { id } });
   }
 }
 

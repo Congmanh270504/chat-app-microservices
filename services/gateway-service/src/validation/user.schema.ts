@@ -1,8 +1,11 @@
+import { Role } from '@/services/user-proxy.service';
 import { z } from '@chatapp/common';
 
 export const createUserSchema = z.object({
   email: z.string().email(),
   displayName: z.string().min(3).max(255),
+  image_url: z.string().optional(),
+  role: z.enum([Role.ADMIN, Role.USER, Role.MODERATOR]).default(Role.USER),
 });
 
 export const userIdParamsSchema = z.object({

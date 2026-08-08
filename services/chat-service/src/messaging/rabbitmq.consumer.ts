@@ -26,7 +26,7 @@ const closeAmqpConnection = async (conn: ChannelModel) => {
 };
 
 const handleUserCreated = async (event: UserCreatedEvent) => {
-  await userRepository.upsertUser(event.payload);
+  await userRepository.editUser(event.payload);
 };
 
 export const startConsumers = async () => {

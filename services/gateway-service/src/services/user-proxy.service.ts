@@ -30,9 +30,17 @@ export interface UserLisResponse {
   data: UserDto[];
 }
 
+export enum Role {
+  USER = 'USER',
+  ADMIN = 'ADMIN',
+  MODERATOR = 'MODERATOR',
+}
+
 export interface CreateUserPayload {
   email: string;
   displayName: string;
+  image_url?: string;
+  role: Role;
 }
 
 export interface SearchUsersParams {
@@ -92,6 +100,15 @@ export const userProxyService = {
     }
   },
 
+  async editUser(id: string, payload: CreateUserPayload): Promise<UserResponse> {
+    try {
+      const response = await client.put<UserResponse>(`/users/${id}`, payload, authHeader);
+      return response.data;
+    } catch (error) {
+      return handleAxiosError(error);
+    }
+  },
+
   async searchUsers(params: SearchUsersParams): Promise<UserLisResponse> {
     try {
       const response = await client.get<UserLisResponse>(`/users/search`, {
@@ -103,6 +120,18 @@ export const userProxyService = {
         },
       });
 
+      return response.data;
+    } catch (error) {
+      return handleAxiosError(error);
+    }
+  },
+
+  async deleteUser(id: string): Promise<{ data: { success: boolean } }> {
+    try {
+      const response = await client.delete<{ data: { success: boolean } }>(
+        `/users/${id}`,
+        authHeader,
+      );
       return response.data;
     } catch (error) {
       return handleAxiosError(error);

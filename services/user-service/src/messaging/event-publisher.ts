@@ -104,3 +104,8 @@ export const publishUserCreatedEvent = async (payload: UserCreatedPayload) => {
     logger.error({ err: error }, 'Error publishing user.created event');
   }
 };
+
+export const publishUserDeletedEvent = async (payload: UserCreatedPayload) => {
+  // TODO: implement user deleted event publishing
+};
+

@@ -1,11 +1,10 @@
 import type { UserRepository } from '@/repositories/user.repositories';
 import type { CreateUserInput, User } from '@/types/user';
 
-import { sequelize } from '@/db';
 import { userRepository } from '@/repositories/user.repositories';
 import { AuthUserRegisteredPayload, HttpError } from '@chatapp/common';
 import { UniqueConstraintError } from 'sequelize';
-import { publishUserCreatedEvent } from '@/messaging/event-publisher';
+import { publishUserCreatedEvent, publishUserDeletedEvent } from '@/messaging/event-publisher';
 
 class UserService {
   constructor(private readonly repository: UserRepository) {}
@@ -70,6 +69,36 @@ class UserService {
       updatedAt: user.updatedAt.toISOString(),
     });
     return user;
+  }
+
+  async editUser(id: string, payload: CreateUserInput): Promise<User> {
+    const user = await this.repository.editUser(id, payload);
+
+    void publishUserCreatedEvent({
+      id: user.id,
+      email: user.email,
+      displayName: user.displayName,
+      createdAt: user.createdAt.toISOString(),
+      updatedAt: user.updatedAt.toISOString(),
+    });
+
+    return user;
+  }
+
+  async deleteUser(id: string) {
+    const user = await this.repository.findById(id);
+    if (!user) {
+      throw new HttpError(404, 'User not found');
+    }
+    await this.repository.deleteUser(id);
+
+    void publishUserDeletedEvent({
+      id: user.id,
+      email: user.email,
+      displayName: user.displayName,
+      createdAt: user.createdAt.toISOString(),
+      updatedAt: user.updatedAt.toISOString(),
+    });
   }
 }
 

@@ -1,21 +1,26 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 'use client';
 
-import * as React from 'react';
-import { MessageSquare, Phone, Settings, LogOut, Sun, Moon } from 'lucide-react';
-import { useTheme } from 'next-themes';
-import { Avatar, AvatarBadge, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
 import { TypographyPopover } from '@/components/chat/typography-popover';
+import { Button } from '@/components/ui/button';
+import { LogOut, MessageSquare, Moon, Phone, Settings, Sun } from 'lucide-react';
+import { signOut } from 'next-auth/react';
+import { useTheme } from 'next-themes';
+import * as React from 'react';
 import UserAvatar from '../user-avatar';
 
-export function ChatSidebar() {
+interface ChatSidebarProps {
+  user?: {
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+    image_url?: string | null;
+  } | null;
+}
+
+export function ChatSidebar({ user }: ChatSidebarProps) {
   const { setTheme, theme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
-
-  React.useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const currentTheme = mounted ? theme : undefined;
 
@@ -43,8 +48,8 @@ export function ChatSidebar() {
 
         <div className="mt-2 cursor-pointer">
           <UserAvatar
-            name="John Doe"
-            imageUrl="https://github.com/shadcn.png"
+            name={user?.name || 'User'}
+            imageUrl={user?.image || (user as any)?.image_url || undefined}
             className="h-10 w-10"
             textClassName="text-lg"
           />
@@ -81,6 +86,7 @@ export function ChatSidebar() {
           variant="ghost"
           size="icon"
           className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 mt-2"
+          onClick={() => signOut()}
         >
           <LogOut size={24} />
         </Button>

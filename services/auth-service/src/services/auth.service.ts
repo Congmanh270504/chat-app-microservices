@@ -51,6 +51,7 @@ export const register = async (input: RegisterInput): Promise<AuthResponse> => {
       id: user.id,
       email: user.email,
       displayName: user.displayName,
+      role: 'USER',
       createdAt: user.createdAt.toISOString(),
     };
 
