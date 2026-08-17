@@ -35,7 +35,7 @@ const main = async () => {
     process.on('SIGINT', shutdown);
     process.on('SIGTERM', shutdown);
   } catch (error) {
-    logger.error({ error }, 'Failed to start user service');
+    logger.error({ err: error }, 'Failed to start user service');
     process.exit(1);
   }
 };

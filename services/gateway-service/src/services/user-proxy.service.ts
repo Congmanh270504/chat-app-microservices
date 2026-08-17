@@ -20,6 +20,7 @@ export interface UserDto {
   displayName: string;
   createdAt: string;
   updatedAt: string;
+  image_url?: string;
 }
 
 export interface UserResponse {

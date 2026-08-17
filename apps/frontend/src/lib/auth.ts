@@ -33,19 +33,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             return null;
           }
 
-          const tokens = await res.json();
+          const resData = await res.json();
 
-          if (tokens && tokens.accessToken) {
-            // Decode the access token to extract user info (id, email, displayName)
-            const decodedToken: any = jwtDecode(tokens.accessToken);
+          if (resData && resData.accessToken) {
+            // Decode the access token to extract user info (id, email)
+            const decodedToken: any = jwtDecode(resData.accessToken);
 
             // Return user object compatible with NextAuth
             return {
-              id: decodedToken.sub,
-              email: decodedToken.email,
-              name: decodedToken.displayName || decodedToken.email.split('@')[0], // fallback if displayName not in token
-              accessToken: tokens.accessToken,
-              refreshToken: tokens.refreshToken,
+              id: resData.user?.id || decodedToken.sub,
+              email: resData.user?.email || decodedToken.email,
+              name: resData.user?.displayName || decodedToken.displayName || decodedToken.email?.split('@')[0] || 'User',
+              image: resData.user?.image_url || decodedToken.image_url || null,
+              role: resData.user?.role || decodedToken.role || 'USER',
+              accessToken: resData.accessToken,
+              refreshToken: resData.refreshToken,
             };
           }
           return null;

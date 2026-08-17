@@ -13,6 +13,7 @@
     "lint": "eslint \"src/**/*.ts\"",
     "typecheck": "tsc --noEmit --project tsconfig.json",
     "test": "echo \"No tests yet\"",
+    "seed": "tsx src/seed.ts",
     "format": "prettier --check \"src/**/*.ts\""
   },
   "keywords": [],

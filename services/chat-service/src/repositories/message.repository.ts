@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { type WithId, type Document, ObjectId } from 'mongodb';
 
-import type { Message, MessageListOptions } from '@/types/message';
+import { MessageStatus, type Message, type MessageListOptions } from '@/types/message';
 
 import { getMongoClient } from '@/clients/mongo.client';
 
@@ -21,6 +21,7 @@ const toMessage = (doc: WithId<Document>): Message => ({
         createdAt: new Date(r.createdAt as string | number | Date),
       }))
     : [],
+  status: doc.status as MessageStatus,
 });
 
 export const messageRepository = {
@@ -35,6 +36,7 @@ export const messageRepository = {
       senderId,
       body,
       createdAt: now,
+      status: MessageStatus.PENDING,
     };
 
     await collection.insertOne(document as unknown as Document);

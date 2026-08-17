@@ -41,12 +41,13 @@ export const requireAuth: RequestHandler = (req, _res, next) => {
     const claims = jwt.verify(token, env.JWT_SECRET) as AccessTokenClaims;
     req.user = toAuthenticatedUser(claims);
     next();
-  } catch (error) {
+  } catch (error: any) {
+    console.error('[requireAuth] Authentication failed:', error?.message || error);
     if (error instanceof HttpError) {
       next(error);
       return;
     }
 
-    next(new HttpError(401, 'Unauthorized'));
+    next(new HttpError(401, error?.message || 'Unauthorized'));
   }
 };

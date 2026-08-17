@@ -28,7 +28,7 @@ const main = async () => {
     process.on('SIGINT', shutdown);
     process.on('SIGTERM', shutdown);
   } catch (error) {
-    logger.error({ error }, 'Failed to start gateway service');
+    logger.error({ err: error }, 'Failed to start gateway service');
     process.exit(1);
   }
 };

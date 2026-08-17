@@ -1,4 +1,4 @@
-import { login, refreshTokens, register, revokeRefreshToken } from '@/services/auth.service';
+import { changePassword, login, refreshTokens, register, revokeRefreshToken } from '@/services/auth.service';
 import { LoginInput, RegisterInput } from '@/types/auth';
 import { asyncHandler, HttpError } from '@chatapp/common';
 import { RequestHandler } from 'express';
@@ -32,3 +32,10 @@ export const revokeHandler: RequestHandler = asyncHandler(async (req, res) => {
   await revokeRefreshToken(userId);
   res.status(204).send();
 });
+
+export const changePasswordHandler: RequestHandler = asyncHandler(async (req, res) => {
+  const { userId, currentPassword, newPassword } = req.body;
+  const result = await changePassword({ userId, currentPassword, newPassword });
+  res.json(result);
+});
+

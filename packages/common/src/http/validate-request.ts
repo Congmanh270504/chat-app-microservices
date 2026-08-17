@@ -25,17 +25,44 @@ export const validateRequest = (schemas: RequestValidationSchemas) => {
     try {
       if (schemas.body) {
         const parsedBody = schemas.body.parse(req.body) as unknown;
-        req.body = parsedBody;
+        try {
+          req.body = parsedBody;
+        } catch {
+          Object.defineProperty(req, 'body', {
+            value: parsedBody,
+            writable: true,
+            configurable: true,
+            enumerable: true,
+          });
+        }
       }
 
       if (schemas.params) {
         const parsedParams = schemas.params.parse(req.params) as ParamsRecord;
-        req.params = parsedParams as Request["params"];
+        try {
+          req.params = parsedParams as Request["params"];
+        } catch {
+          Object.defineProperty(req, 'params', {
+            value: parsedParams,
+            writable: true,
+            configurable: true,
+            enumerable: true,
+          });
+        }
       }
 
       if (schemas.query) {
         const parsedQuery = schemas.query.parse(req.query) as QueryRecord;
-        req.query = parsedQuery as Request["query"];
+        try {
+          req.query = parsedQuery as Request["query"];
+        } catch {
+          Object.defineProperty(req, 'query', {
+            value: parsedQuery,
+            writable: true,
+            configurable: true,
+            enumerable: true,
+          });
+        }
       }
 
       next();

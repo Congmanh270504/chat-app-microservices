@@ -1,5 +1,12 @@
+import { getCurrentUser } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 
-export default function Home() {
-  redirect('/chat');
+export default async function Home() {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    redirect('/login'); //  Đã đổi thành /login
+  }
+
+  return redirect('/chat');
 }

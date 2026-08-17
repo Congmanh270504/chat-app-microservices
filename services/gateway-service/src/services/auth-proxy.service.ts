@@ -23,6 +23,8 @@ export interface UserData {
   id: string;
   email: string;
   displayName: string;
+  image_url?: string;
+  role: string;
   createdAt: string;
 }
 
@@ -47,6 +49,12 @@ export interface RefreshPayload {
 
 export interface RevokePayload {
   userId: string;
+}
+
+export interface ChangePasswordPayload {
+  userId: string;
+  currentPassword?: string;
+  newPassword?: string;
 }
 
 const resolvedMessage = (status: number, data: unknown): string => {
@@ -107,4 +115,14 @@ export const authProxyService = {
       return handleAxiosError(error);
     }
   },
+
+  async changePassword(payload: ChangePasswordPayload): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await client.post<{ success: boolean; message: string }>('/auth/change-password', payload, authHeader);
+      return response.data;
+    } catch (error) {
+      return handleAxiosError(error);
+    }
+  },
 };
+

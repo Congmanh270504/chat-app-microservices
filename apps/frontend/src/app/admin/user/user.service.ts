@@ -52,7 +52,7 @@ export const userService = {
     });
 
     if (!res.ok) {
-      throw new Error(`User not found: ${id}`);
+      return null;
     }
 
     const responseData = await res.json();

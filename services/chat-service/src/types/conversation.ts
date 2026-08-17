@@ -1,3 +1,5 @@
+import { MessageStatus } from './message';
+
 export interface Conversation {
   id: string;
   title: string | null;
@@ -6,6 +8,7 @@ export interface Conversation {
   updatedAt: Date;
   lastMessageAt: Date | null;
   lastMessagePreview: string | null;
+  lastMessageStatus: MessageStatus | null;
 }
 
 export interface CreateConversationInput {

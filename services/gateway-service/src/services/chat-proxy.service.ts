@@ -26,13 +26,13 @@ const resolvedMessage = (status: number, data: unknown): string => {
   }
 
   return status >= 500
-    ? 'Authentication service is unavailable'
+    ? 'Chat service is unavailable'
     : 'An error occurred while processing the request';
 };
 
 const handleAxiosError = (error: unknown): never => {
   if (!axios.isAxiosError(error) || !error.response) {
-    throw new HttpError(500, 'Authentication service is unavailable');
+    throw new HttpError(500, 'Chat service is unavailable');
   }
 
   const { status, data } = error.response as { status: number; data: unknown };

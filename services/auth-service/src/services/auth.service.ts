@@ -41,7 +41,11 @@ export const register = async (input: RegisterInput): Promise<AuthResponse> => {
 
     await transaction.commit();
 
-    const accessToken = signAccessToken({ sub: user.id, email: user.email });
+    const accessToken = signAccessToken({
+      sub: user.id,
+      email: user.email,
+      displayName: user.displayName,
+    });
     const refreshToken = signRefreshToken({
       sub: user.id,
       tokenId: refreshTokenRecord.tokenId,
@@ -91,7 +95,11 @@ export const login = async (input: LoginInput): Promise<AuthTokens> => {
 
   const refreshTokenRecord = await createRefreshToken(credential.id);
 
-  const accessToken = signAccessToken({ sub: credential.id, email: credential.email });
+  const accessToken = signAccessToken({
+    sub: credential.id,
+    email: credential.email,
+    displayName: credential.displayName,
+  });
   const refreshToken = signRefreshToken({
     sub: credential.id,
     tokenId: refreshTokenRecord.tokenId,
@@ -133,7 +141,11 @@ export const refreshTokens = async (token: string): Promise<AuthTokens> => {
   const newTokenRecord = await createRefreshToken(credential.id);
 
   return {
-    accessToken: signAccessToken({ sub: credential.id, email: credential.email }),
+    accessToken: signAccessToken({
+      sub: credential.id,
+      email: credential.email,
+      displayName: credential.displayName,
+    }),
     refreshToken: signRefreshToken({ sub: credential.id, tokenId: newTokenRecord.tokenId }),
   };
 };
@@ -141,6 +153,35 @@ export const refreshTokens = async (token: string): Promise<AuthTokens> => {
 export const revokeRefreshToken = async (userId: string) => {
   await RefreshToken.destroy({ where: { userId } });
 };
+
+export const changePassword = async (input: {
+  userId: string;
+  currentPassword?: string;
+  newPassword?: string;
+}): Promise<{ success: boolean; message: string }> => {
+  const credential = await UserCredentials.findByPk(input.userId);
+  if (!credential) {
+    throw new HttpError(404, 'Người dùng không tồn tại');
+  }
+
+  if (input.currentPassword) {
+    const valid = await verifyPassword(input.currentPassword, credential.passwordHash);
+    if (!valid) {
+      throw new HttpError(400, 'Mật khẩu hiện tại không chính xác');
+    }
+  }
+
+  if (!input.newPassword) {
+    throw new HttpError(400, 'Mật khẩu mới không được để trống');
+  }
+
+  const passwordHash = await hashPassword(input.newPassword);
+  credential.passwordHash = passwordHash;
+  await credential.save();
+
+  return { success: true, message: 'Đổi mật khẩu thành công' };
+};
+
 
 const createRefreshToken = async (userId: string, transaction?: Transaction) => {
   const expiresAt = new Date();

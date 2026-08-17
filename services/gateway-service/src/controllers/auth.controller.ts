@@ -1,6 +1,14 @@
 import { authProxyService } from '@/services/auth-proxy.service';
-import { loginSchema, refreshSchema, registerSchema, revokeSchema } from '@/validation/auth.schema';
+import { userProxyService } from '@/services/user-proxy.service';
+import {
+  changePasswordSchema,
+  loginSchema,
+  refreshSchema,
+  registerSchema,
+  revokeSchema,
+} from '@/validation/auth.schema';
 import { AsyncHandler } from '@chatapp/common';
+import jwt from 'jsonwebtoken';
 
 export const registerUser: AsyncHandler = async (req, res, next) => {
   try {
@@ -16,7 +24,22 @@ export const loginUser: AsyncHandler = async (req, res, next) => {
   try {
     const payload = loginSchema.parse(req.body);
     const tokens = await authProxyService.login(payload);
-    res.json(tokens);
+
+    let user = null;
+    try {
+      const decoded = jwt.decode(tokens.accessToken) as { sub?: string } | null;
+      if (decoded?.sub) {
+        const userRes = await userProxyService.getUserById(decoded.sub);
+        user = userRes.data;
+      }
+    } catch {
+      // Fallback if user profile fetching fails
+    }
+
+    res.json({
+      ...tokens,
+      user,
+    });
   } catch (error) {
     next(error);
   }
@@ -41,3 +64,14 @@ export const revokeTokens: AsyncHandler = async (req, res, next) => {
     next(error);
   }
 };
+
+export const changePassword: AsyncHandler = async (req, res, next) => {
+  try {
+    const payload = changePasswordSchema.parse(req.body);
+    const response = await authProxyService.changePassword(payload);
+    res.json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+

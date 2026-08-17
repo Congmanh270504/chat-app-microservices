@@ -4,6 +4,14 @@ export interface Reaction {
   createdAt: Date;
 }
 
+export enum MessageStatus {
+  PENDING = 'PENDING',
+  DELIVERED = 'DELIVERED',
+  SENT = 'SENT',
+  READ = 'READ',
+  BROKEN = 'BROKEN',
+}
+
 export interface Message {
   id: string;
   conversationId: string;
@@ -11,6 +19,7 @@ export interface Message {
   body: string;
   createdAt: Date;
   reactions: Reaction[];
+  status: MessageStatus;
 }
 
 export interface CreateMessageInput {

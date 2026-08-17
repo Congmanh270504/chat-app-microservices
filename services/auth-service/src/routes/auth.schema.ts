@@ -26,3 +26,12 @@ export const revokeSchema = z.object({
     userId: z.string().uuid(),
   }),
 });
+
+export const changePasswordSchema = z.object({
+  body: z.object({
+    userId: z.string().uuid(),
+    currentPassword: z.string().min(1, 'Mật khẩu hiện tại là bắt buộc'),
+    newPassword: z.string().min(6, 'Mật khẩu mới phải có ít nhất 6 ký tự'),
+  }),
+});
+

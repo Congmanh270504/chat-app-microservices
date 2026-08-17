@@ -8,11 +8,23 @@ import type {
 
 import { conversationCache } from '@/cache/conversation.cache';
 import { conversationRepository } from '@/repositories/conversation.repository';
+import { pusherServer } from '@/lib/pusher';
+
+import { MessageStatus } from '@/types/message';
 
 export const conversationService = {
   async createConversation(input: CreateConversationInput): Promise<Conversation> {
     const conversation = await conversationRepository.create(input);
     await conversationCache.set(conversation);
+
+    try {
+      for (const participantId of conversation.participantIds) {
+        await pusherServer.trigger(`user-${participantId}`, 'conversation:new', conversation);
+      }
+    } catch (error) {
+      console.error('Failed to trigger conversation:new Pusher event:', error);
+    }
+
     return conversation;
   },
 
@@ -35,8 +47,8 @@ export const conversationService = {
     return conversationRepository.findSummaries(filter);
   },
 
-  async touchConversation(conversationId: string, preview: string): Promise<void> {
-    await conversationRepository.touchConversation(conversationId, preview);
+  async touchConversation(conversationId: string, preview: string, status?: MessageStatus | null): Promise<void> {
+    await conversationRepository.touchConversation(conversationId, preview, status);
     await conversationCache.delete(conversationId);
   },
 };

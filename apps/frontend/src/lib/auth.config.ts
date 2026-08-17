@@ -31,6 +31,7 @@ export const authConfig = {
         token.id = user.id;
         token.email = user.email;
         token.name = user.name;
+        token.picture = user.image;
       }
       return token;
     },
@@ -40,6 +41,7 @@ export const authConfig = {
           session.user.id = token.id as string;
           session.user.email = token.email as string;
           session.user.name = token.name as string;
+          session.user.image = (token.picture || token.image) as string;
         }
         // Add tokens to session so client/server can access them
         (session as any).accessToken = token.accessToken;

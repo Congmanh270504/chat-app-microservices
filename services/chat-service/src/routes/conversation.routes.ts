@@ -24,11 +24,13 @@ conversationRouter.post(
   validateRequest({ body: createConversationSchema }),
   createConversationHandler,
 );
+
 conversationRouter.get(
   '/',
   validateRequest({ query: listConversationsQuerySchema }),
   listConversationHandler,
 );
+
 conversationRouter.get(
   '/:id',
   validateRequest({ params: conversationIdParamsSchema }),
