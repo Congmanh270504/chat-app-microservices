@@ -16,6 +16,7 @@ import {
   getPopulatedConversationsAction,
 } from '@/app/chat/chat.actions';
 import { pusherClient } from '@/lib/pusher';
+import { cn } from '@/lib/utils';
 
 export interface PopulatedConversation {
   id: string;
@@ -26,6 +27,7 @@ export interface PopulatedConversation {
   lastMessageAt: Date | string | null;
   lastMessagePreview: string | null;
   lastMessageStatus?: string | null;
+  lastMessageSenderId?: string | null;
   recipient?: {
     id: string;
     displayName?: string;
@@ -36,9 +38,10 @@ export interface PopulatedConversation {
 
 interface ChatListProps {
   initialConversations?: PopulatedConversation[];
+  currentUserId?: string;
 }
 
-export function ChatList({ initialConversations = [] }: ChatListProps) {
+export function ChatList({ initialConversations = [], currentUserId: propUserId }: ChatListProps) {
   const router = useRouter();
   const params = useParams();
   const activeId = params?.id as string | undefined;
@@ -66,12 +69,15 @@ export function ChatList({ initialConversations = [] }: ChatListProps) {
   }, []);
 
   React.useEffect(() => {
-    refreshConversations();
-  }, [refreshConversations, activeId]);
+    // Only fetch if initialConversations wasn't loaded from server
+    if (!initialConversations || initialConversations.length === 0) {
+      refreshConversations();
+    }
+  }, [initialConversations, refreshConversations]);
 
-  // Subscribe to real-time updates on user personal channel and active conversations
+  // Subscribe to real-time updates on user personal channel
   const { data: session } = useSession();
-  const currentUserId = session?.user?.id;
+  const currentUserId = propUserId || session?.user?.id;
 
   React.useEffect(() => {
     if (!currentUserId) return;
@@ -85,33 +91,15 @@ export function ChatList({ initialConversations = [] }: ChatListProps) {
 
     channel.bind('conversation:new', handleRefresh);
     channel.bind('new-message', handleRefresh);
+    channel.bind('conversation:read', handleRefresh);
 
     return () => {
       channel.unbind('conversation:new', handleRefresh);
       channel.unbind('new-message', handleRefresh);
+      channel.unbind('conversation:read', handleRefresh);
       pusherClient.unsubscribe(userChannelName);
     };
   }, [currentUserId, refreshConversations]);
-
-  React.useEffect(() => {
-    if (!conversations.length) return;
-    const conversationIds = conversations.map((c) => c.id);
-
-    conversationIds.forEach((id) => {
-      const channelName = `chat-${id}`;
-      const channel = pusherClient.subscribe(channelName);
-      channel.bind('new-message', () => {
-        refreshConversations();
-      });
-    });
-
-    return () => {
-      conversationIds.forEach((id) => {
-        const channelName = `chat-${id}`;
-        pusherClient.unsubscribe(channelName);
-      });
-    };
-  }, [conversations.map((c) => c.id).join(','), refreshConversations]);
 
   React.useEffect(() => {
     async function loadUsers() {
@@ -333,10 +321,23 @@ export function ChatList({ initialConversations = [] }: ChatListProps) {
                     </div>
 
                     <div className="flex justify-between items-center gap-2">
-                      <p className="text-xs truncate text-muted-foreground flex-1">
+                      <p
+                        className={cn(
+                          'text-xs truncate flex-1',
+                          conv.lastMessageSenderId &&
+                            conv.lastMessageSenderId !== currentUserId &&
+                            conv.lastMessageStatus !== 'READ'
+                            ? 'font-semibold text-foreground'
+                            : 'text-muted-foreground',
+                        )}
+                      >
                         {previewMessage}
                       </p>
-                      {renderStatus(conv.lastMessageStatus)}
+                      {!conv.lastMessageSenderId || conv.lastMessageSenderId === currentUserId ? (
+                        renderStatus(conv.lastMessageStatus)
+                      ) : conv.lastMessageStatus !== 'READ' ? (
+                        <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shrink-0" />
+                      ) : null}
                     </div>
                   </div>
                 </div>

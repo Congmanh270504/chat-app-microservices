@@ -45,18 +45,24 @@ export const userService = {
   },
 
   getById: async (id: string): Promise<User | null> => {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`${USER_SERVICE_URL}/${id}`, {
-      headers,
-      cache: 'no-store',
-    });
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${USER_SERVICE_URL}/${id}`, {
+        headers,
+        cache: 'no-store',
+        signal: AbortSignal.timeout(3000),
+      });
 
-    if (!res.ok) {
+      if (!res.ok) {
+        return null;
+      }
+
+      const responseData = await res.json();
+      return responseData.data || responseData;
+    } catch (error) {
+      console.warn(`[userService] getById failed for ${id}:`, error);
       return null;
     }
-
-    const responseData = await res.json();
-    return responseData.data || responseData;
   },
 
   create: async (data: CreateUserInput): Promise<User> => {

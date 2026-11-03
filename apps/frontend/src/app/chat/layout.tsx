@@ -1,10 +1,11 @@
-import { ChatSidebar } from '@/components/chat/sidebar';
+import { auth } from '@/lib/auth';
 import { ChatList } from '@/components/chat/chat-list';
 import { getPopulatedConversationsAction } from '@/app/chat/chat.actions';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ChatLayout({ children }: { children: React.ReactNode }) {
+  const session = await auth();
   const res = await getPopulatedConversationsAction();
   const conversations = res.success ? res.data || [] : [];
 
@@ -12,7 +13,7 @@ export default async function ChatLayout({ children }: { children: React.ReactNo
     <div className="flex flex-1 h-full">
       {/* Messages List Panel */}
       <div className="w-[350px] border-r flex flex-col h-full bg-background/95">
-        <ChatList initialConversations={conversations} />
+        <ChatList initialConversations={conversations} currentUserId={session?.user?.id} />
       </div>
 
       {/* Main Content Area (Either Empty State or Chat Area) */}

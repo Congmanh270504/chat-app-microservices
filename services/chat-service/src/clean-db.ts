@@ -1,4 +1,8 @@
 // pnpm exec tsx src/clean-db.ts
+import dns from 'node:dns';
+try {
+  dns.setServers(['8.8.8.8', '1.1.1.1']);
+} catch {}
 import { MongoClient } from 'mongodb';
 import dotenv from 'dotenv';
 import path from 'path';

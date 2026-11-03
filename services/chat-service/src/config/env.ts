@@ -10,6 +10,10 @@ const envSchema = z.object({
   RABBITMQ_URL: z.string().optional(),
   INTERNAL_API_TOKEN: z.string().min(16),
   JWT_SECRET: z.string().min(32),
+  PUSHER_APP_ID: z.string().optional(),
+  PUSHER_KEY: z.string().optional(),
+  PUSHER_SECRET: z.string().optional(),
+  PUSHER_CLUSTER: z.string().optional(),
 });
 
 type EnvType = z.infer<typeof envSchema>;

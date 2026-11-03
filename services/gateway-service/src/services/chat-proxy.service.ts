@@ -48,11 +48,15 @@ export interface ConversationDto {
   updatedAt: string;
   lastMessageAt: string | null;
   lastMessagePreview: string | null;
+  lastMessageStatus?: string | null;
+  lastMessageSenderId?: string | null;
 }
 
 export interface ReactionDto {
+  messageId?: string;
+  userReactId?: string;
+  userId?: string;
   emoji: string;
-  userId: string;
   createdAt: string;
 }
 
@@ -63,6 +67,7 @@ export interface MessageDto {
   body: string;
   createdAt: string;
   reactions: ReactionDto[];
+  status?: string;
 }
 
 export interface ConversationResponse {
@@ -156,6 +161,44 @@ export const chatProxyService = {
         `/conversations/${conversationId}/messages`,
         {
           params: query,
+          headers: { [USER_ID_HEADER]: userId },
+        },
+      );
+      return response.data.data;
+    } catch (error) {
+      return handleAxiosError(error);
+    }
+  },
+
+  async addReaction(
+    conversationId: string,
+    messageId: string,
+    userId: string,
+    payload: { emoji: string },
+  ): Promise<MessageDto> {
+    try {
+      const response = await client.post<MessageResponse>(
+        `/conversations/${conversationId}/messages/${messageId}/reactions`,
+        payload,
+        {
+          headers: { [USER_ID_HEADER]: userId },
+        },
+      );
+      return response.data.data;
+    } catch (error) {
+      return handleAxiosError(error);
+    }
+  },
+
+  async markConversationAsRead(
+    conversationId: string,
+    userId: string,
+  ): Promise<ConversationDto> {
+    try {
+      const response = await client.patch<ConversationResponse>(
+        `/conversations/${conversationId}/read`,
+        {},
+        {
           headers: { [USER_ID_HEADER]: userId },
         },
       );

@@ -1,5 +1,11 @@
 import { MessageStatus } from './message';
 
+export interface ParticipantRead {
+  userId: string;
+  lastReadAt: Date;
+  lastReadMessageId?: string | null;
+}
+
 export interface Conversation {
   id: string;
   title: string | null;
@@ -9,6 +15,8 @@ export interface Conversation {
   lastMessageAt: Date | null;
   lastMessagePreview: string | null;
   lastMessageStatus: MessageStatus | null;
+  lastMessageSenderId?: string | null;
+  participantReads?: ParticipantRead[];
 }
 
 export interface CreateConversationInput {

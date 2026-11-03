@@ -155,7 +155,7 @@ export async function getPopulatedConversationsAction() {
     }
 
     const conversations: any[] = resData.data || [];
-    console.log('[getPopulatedConversationsAction] currentUserId:', currentUserId, 'conversations:', conversations);
+    const userCache = new Map<string, any>();
 
     const populated = await Promise.all(
       conversations.map(async (conv) => {
@@ -163,10 +163,15 @@ export async function getPopulatedConversationsAction() {
           conv.participantIds?.find((id: string) => id !== currentUserId) || conv.participantIds?.[0];
         let recipient = null;
         if (targetUserId) {
-          try {
-            recipient = await userService.getById(targetUserId);
-          } catch (e) {
-            console.error(`Failed to fetch user ${targetUserId}:`, e);
+          if (userCache.has(targetUserId)) {
+            recipient = userCache.get(targetUserId);
+          } else {
+            try {
+              recipient = await userService.getById(targetUserId);
+              userCache.set(targetUserId, recipient);
+            } catch (e) {
+              console.error(`Failed to fetch user ${targetUserId}:`, e);
+            }
           }
         }
         return {
@@ -264,3 +269,70 @@ export async function sendMessageAction(conversationId: string, body: string) {
   }
 }
 
+export async function addReactionAction(conversationId: string, messageId: string, emoji: string) {
+  try {
+    const session = await auth();
+    const token = (session as any)?.accessToken;
+    if (!token) {
+      return { success: false, error: 'Chưa đăng nhập' };
+    }
+
+    const res = await fetch(
+      `${GATEWAY_URL}/conversations/${conversationId}/messages/${messageId}/reactions`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ emoji }),
+      },
+    );
+
+    const resData = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      return {
+        success: false,
+        error: resData.message || 'Không thể cập nhật biểu cảm',
+      };
+    }
+
+    return { success: true, data: resData.data };
+  } catch (error: any) {
+    console.error('addReactionAction error:', error);
+    return { success: false, error: error?.message || 'Lỗi khi thêm biểu cảm' };
+  }
+}
+
+export async function markConversationAsReadAction(conversationId: string) {
+  try {
+    const session = await auth();
+    const token = (session as any)?.accessToken;
+    if (!token) {
+      return { success: false, error: 'Chưa đăng nhập' };
+    }
+
+    const res = await fetch(`${GATEWAY_URL}/conversations/${conversationId}/read`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const resData = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      return {
+        success: false,
+        error: resData.message || 'Không thể đánh dấu đã đọc',
+      };
+    }
+
+    return { success: true, data: resData.data };
+  } catch (error: any) {
+    console.error('markConversationAsReadAction error:', error);
+    return { success: false, error: error?.message || 'Lỗi khi đánh dấu đã đọc' };
+  }
+}

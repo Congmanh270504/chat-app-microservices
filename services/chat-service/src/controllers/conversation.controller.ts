@@ -7,7 +7,12 @@ import {
 } from '@/validation/conversation.schema';
 import { conversationIdParamsSchema } from '@/validation/shared.schema';
 import { getAuthenticatedUser } from '@/utils/auth';
-import { createMessageBodySchema, listMessagesQuerySchema } from '@/validation/message.schema';
+import {
+  createMessageBodySchema,
+  listMessagesQuerySchema,
+  addReactionBodySchema,
+  messageParamsSchema,
+} from '@/validation/message.schema';
 import { messageService } from '@/services/message.service';
 
 const parsedConversation = (params: unknown) => {
@@ -72,4 +77,26 @@ export const listMessageHandler: RequestHandler = asyncHandler(async (req, res) 
     after,
   });
   res.json({ data: messages });
+});
+
+export const addReactionHandler: RequestHandler = asyncHandler(async (req, res) => {
+  const user = getAuthenticatedUser(req);
+  const { id, messageId } = messageParamsSchema.parse(req.params);
+  const payload = addReactionBodySchema.parse(req.body);
+
+  const updatedMessage = await messageService.addReaction(
+    id,
+    messageId,
+    user.id,
+    payload.emoji,
+  );
+
+  res.status(200).json({ data: updatedMessage });
+});
+
+export const markConversationAsReadHandler: RequestHandler = asyncHandler(async (req, res) => {
+  const user = getAuthenticatedUser(req);
+  const conversationId = parsedConversation(req.params);
+  const result = await conversationService.markConversationAsRead(conversationId, user.id);
+  res.status(200).json({ data: result.conversation });
 });

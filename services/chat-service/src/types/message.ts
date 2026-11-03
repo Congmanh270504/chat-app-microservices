@@ -1,6 +1,7 @@
 export interface Reaction {
+  messageId: string;
+  userReactId: string;
   emoji: string;
-  userId: string;
   createdAt: Date;
 }
 
@@ -36,13 +37,13 @@ export interface MessageListOptions {
 export interface AddReactionInput {
   messageId: string;
   conversationId: string;
-  userId: string;
+  userReactId: string;
   emoji: string;
 }
 
 export interface RemoveReactionInput {
   messageId: string;
   conversationId: string;
-  userId: string;
+  userReactId: string;
   emoji: string;
 }

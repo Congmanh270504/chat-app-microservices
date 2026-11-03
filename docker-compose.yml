@@ -1,6 +1,7 @@
 services:
 
   rabbitmq:
+    profiles: ["local-db"]
     image: rabbitmq:3-management
     container_name: chatapp-rabbitmq
     ports:
@@ -26,6 +27,7 @@ services:
     # retries: Số lần thử lại trước khi đánh dấu container là không khỏe mạnh (unhealthy).
 
   redis:
+    profiles: ["local-db"]
     image: redis:7
     container_name: chatapp-redis
     ports:
@@ -42,6 +44,7 @@ services:
       start_period: 30s    
   
   mongo:
+    profiles: ["local-db"]
     image: mongo:7
     container_name: chatapp-mongo
     ports:
@@ -61,6 +64,7 @@ services:
       start_period: 30s
  
   user-db:
+    profiles: ["local-db"]
     image: postgres:16
     container_name: chatapp-user-db
     environment:
@@ -81,6 +85,7 @@ services:
   
 
   auth-db:
+    profiles: ["local-db"]
     image: mysql:8.0
     container_name: chatapp-auth-db
     environment:
@@ -153,11 +158,7 @@ services:
       JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-30d}
       RABBITMQ_URL: ${RABBITMQ_URL}
       INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN}
-    depends_on:
-      auth-db:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
+    # Cloud database / message queue in use, no depends_on for local db
     networks:
       - chatapp-network
     healthcheck:
@@ -181,11 +182,7 @@ services:
       USER_DB_URL: ${USER_DB_URL}
       RABBITMQ_URL: ${RABBITMQ_URL}
       INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN}
-    depends_on:
-      user-db:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
+    # Cloud database / message queue in use, no depends_on for local db
     networks:
       - chatapp-network
     healthcheck:
@@ -211,13 +208,11 @@ services:
       RABBITMQ_URL: ${RABBITMQ_URL}
       INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN}
       JWT_SECRET: ${JWT_SECRET}
-    depends_on:
-      mongo:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
+      PUSHER_APP_ID: ${PUSHER_APP_ID}
+      PUSHER_KEY: ${PUSHER_KEY}
+      PUSHER_SECRET: ${PUSHER_SECRET}
+      PUSHER_CLUSTER: ${PUSHER_CLUSTER}
+    # Cloud database / message queue in use, no depends_on for local db
     networks:
       - chatapp-network
     healthcheck:

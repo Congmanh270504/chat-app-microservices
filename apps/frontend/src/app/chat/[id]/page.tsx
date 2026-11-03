@@ -9,10 +9,11 @@ export default async function ChatDetailPage({ params }: { params: Promise<{ id:
   const chatId = resolvedParams.id;
 
   let recipient = null;
+  let currentUserId: string | undefined = undefined;
 
   try {
     const session = await auth();
-    const currentUserId = session?.user?.id;
+    currentUserId = session?.user?.id;
 
     const convRes = await getConversationAction(chatId);
     if (convRes.success && convRes.data) {
@@ -32,5 +33,5 @@ export default async function ChatDetailPage({ params }: { params: Promise<{ id:
     console.error('Failed to fetch recipient user on server:', error);
   }
 
-  return <ChatArea chatId={chatId} recipient={recipient} />;
+  return <ChatArea chatId={chatId} recipient={recipient} currentUserId={currentUserId} />;
 }

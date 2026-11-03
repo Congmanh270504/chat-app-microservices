@@ -8,7 +8,12 @@ import {
   conversationIdParamsSchema,
 } from '@/validation/conversation.schema';
 import { asyncHandler, HttpError } from '@chatapp/common';
-import { createMessageBodySchema, listMessagesQuerySchema } from '@/validation/message.schema';
+import {
+  createMessageBodySchema,
+  listMessagesQuerySchema,
+  addReactionBodySchema,
+  messageParamsSchema,
+} from '@/validation/message.schema';
 
 export const createConversationHandler: RequestHandler = asyncHandler(async (req, res) => {
   const user = getAuthenticatedUser(req);
@@ -65,7 +70,26 @@ export const createMessageHandler: RequestHandler = asyncHandler(async (req, res
 export const listMessagesHandler: RequestHandler = asyncHandler(async (req, res) => {
   const user = getAuthenticatedUser(req);
   const { id } = conversationIdParamsSchema.parse(req.params);
+
   const query = listMessagesQuerySchema.parse(req.query);
+
+  console.log('listMessagesHandler', query, req.query);
   const messages = await chatProxyService.listMessages(id, user.id, query);
   res.json({ data: messages });
+});
+
+export const addReactionHandler: RequestHandler = asyncHandler(async (req, res) => {
+  const user = getAuthenticatedUser(req);
+  const { id, messageId } = messageParamsSchema.parse(req.params);
+  const payload = addReactionBodySchema.parse(req.body);
+
+  const message = await chatProxyService.addReaction(id, messageId, user.id, payload);
+  res.status(200).json({ data: message });
+});
+
+export const markConversationAsReadHandler: RequestHandler = asyncHandler(async (req, res) => {
+  const user = getAuthenticatedUser(req);
+  const { id } = conversationIdParamsSchema.parse(req.params);
+  const conversation = await chatProxyService.markConversationAsRead(id, user.id);
+  res.json({ data: conversation });
 });

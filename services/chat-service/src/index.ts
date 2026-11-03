@@ -1,3 +1,11 @@
+import dns from 'node:dns';
+
+try {
+  dns.setServers(['8.8.8.8', '1.1.1.1']);
+} catch {
+  // ignore
+}
+
 import { createApp } from '@/app';
 import { createServer } from 'http';
 import { env } from '@/config/env';

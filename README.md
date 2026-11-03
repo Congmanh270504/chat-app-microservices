@@ -115,42 +115,47 @@ cp .env.example .env
 
 Update the environment variables as needed.
 
-### 4. Start infrastructure services
-
-```bash
-docker compose up -d rabbitmq redis mongo user-db auth-db
-```
-
-### 5. Build the common package
+### 4. Build the common package
 
 ```bash
 pnpm --filter @chatapp/common build
 ```
 
-### 6. Start all services (development)
+### 5. Start all services (Backend + Frontend)
+
+All databases & brokers are cloud-hosted (Supabase, Aiven, Mongo Atlas, Upstash Redis, CloudAMQP). You do not need to start local database containers.
+
+Run everything with a single command:
 
 ```bash
 pnpm dev
 ```
 
-Or start individual services:
+Or start individual services separately:
 
 ```bash
+# Backend services only:
+pnpm --filter "*-service" dev
+
+# Or each service in its own terminal:
 pnpm --filter gateway-service dev
 pnpm --filter @chatapp/auth-service dev
 pnpm --filter @chatapp/user-service dev
 pnpm --filter chat-service dev
+
+# Frontend only:
+pnpm --filter frontend dev
 ```
 
-### Running with Docker Compose (Production)
+### Running Backend with Docker Compose (Production / Dokploy)
 
-To run the entire stack with Docker:
+To run the backend microservices with Docker:
 
 ```bash
 docker compose up -d
 ```
 
-This will start all services and their dependencies with health checks and automatic restarts.
+*(Note: Local databases are assigned to `local-db` profile, so Docker only runs the application microservices connected to your cloud services).*
 
 ## Configuration
 

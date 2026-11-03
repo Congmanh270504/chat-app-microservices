@@ -12,8 +12,15 @@ import {
   getConversationHandler,
   listConversationsHandler,
   listMessagesHandler,
+  addReactionHandler,
+  markConversationAsReadHandler,
 } from '@/controllers/conversation.controller';
-import { createMessageBodySchema, listMessagesQuerySchema } from '@/validation/message.schema';
+import {
+  createMessageBodySchema,
+  listMessagesQuerySchema,
+  addReactionBodySchema,
+  messageParamsSchema,
+} from '@/validation/message.schema';
 
 export const conversationRouter: Router = Router();
 
@@ -47,4 +54,22 @@ conversationRouter.get(
   '/:id/messages',
   validateRequest({ params: conversationIdParamsSchema, query: listMessagesQuerySchema }),
   listMessagesHandler,
+);
+
+conversationRouter.post(
+  '/:id/messages/:messageId/reactions',
+  validateRequest({ params: messageParamsSchema, body: addReactionBodySchema }),
+  addReactionHandler,
+);
+
+conversationRouter.patch(
+  '/:id/read',
+  validateRequest({ params: conversationIdParamsSchema }),
+  markConversationAsReadHandler,
+);
+
+conversationRouter.post(
+  '/:id/read',
+  validateRequest({ params: conversationIdParamsSchema }),
+  markConversationAsReadHandler,
 );

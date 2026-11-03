@@ -47,8 +47,47 @@ export const conversationService = {
     return conversationRepository.findSummaries(filter);
   },
 
-  async touchConversation(conversationId: string, preview: string, status?: MessageStatus | null): Promise<void> {
-    await conversationRepository.touchConversation(conversationId, preview, status);
+  async touchConversation(
+    conversationId: string,
+    preview: string,
+    status?: MessageStatus | null,
+    senderId?: string,
+  ): Promise<void> {
+    await conversationRepository.touchConversation(conversationId, preview, status, senderId);
     await conversationCache.delete(conversationId);
+  },
+
+  async markConversationAsRead(
+    conversationId: string,
+    userId: string,
+    messageId?: string,
+  ): Promise<{ conversation: Conversation; lastReadAt: Date }> {
+    const res = await conversationRepository.markAsRead(conversationId, userId, messageId);
+    if (!res) {
+      throw new HttpError(404, 'Conversation not found');
+    }
+
+    await conversationCache.delete(conversationId);
+
+    try {
+      await pusherServer.trigger(`chat-${conversationId}`, 'conversation:read', {
+        conversationId,
+        readerId: userId,
+        lastReadAt: res.lastReadAt,
+      });
+
+      for (const participantId of res.conversation.participantIds) {
+        await pusherServer.trigger(`user-${participantId}`, 'conversation:read', {
+          conversationId,
+          readerId: userId,
+          lastReadAt: res.lastReadAt,
+          lastMessageStatus: res.conversation.lastMessageStatus,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to trigger conversation:read Pusher event:', error);
+    }
+
+    return res;
   },
 };

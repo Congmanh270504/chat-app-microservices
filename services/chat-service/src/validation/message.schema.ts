@@ -17,3 +17,12 @@ export const listMessagesQuerySchema = z.object({
     .optional(),
   after: z.string().datetime().optional(),
 });
+
+export const addReactionBodySchema = z.object({
+  emoji: z.string().min(1).max(20),
+});
+
+export const messageParamsSchema = z.object({
+  id: z.string().uuid(),
+  messageId: z.string().min(1),
+});

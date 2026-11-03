@@ -16,8 +16,9 @@ const toMessage = (doc: WithId<Document>): Message => ({
   createdAt: new Date(doc.createdAt as string | number | Date),
   reactions: Array.isArray(doc.reactions)
     ? doc.reactions.map((r: WithId<Document>) => ({
+        messageId: String(r.messageId ?? doc._id),
+        userReactId: String(r.userReactId ?? r.userId),
         emoji: String(r.emoji),
-        userId: String(r.userId),
         createdAt: new Date(r.createdAt as string | number | Date),
       }))
     : [],
@@ -36,7 +37,7 @@ export const messageRepository = {
       senderId,
       body,
       createdAt: now,
-      status: MessageStatus.PENDING,
+      status: MessageStatus.SENT,
     };
 
     await collection.insertOne(document as unknown as Document);
@@ -53,6 +54,7 @@ export const messageRepository = {
     const query: Record<string, unknown> = {
       conversationId,
     };
+
     if (options.after) {
       query.createdAt = { $gt: options.after };
     }
@@ -60,7 +62,7 @@ export const messageRepository = {
     const cursor = db
       .collection(MESSAGES_COLLECTION)
       .find(query)
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: 1 })
       .limit(options.limit ?? 50);
 
     const messages = await cursor.toArray();
@@ -74,5 +76,62 @@ export const messageRepository = {
       .collection(MESSAGES_COLLECTION)
       .findOne({ _id: messageId } as unknown as Document);
     return doc ? toMessage(doc) : null;
+  },
+
+  async addReaction(
+    conversationId: string,
+    messageId: string,
+    userReactId: string,
+    emoji: string,
+  ): Promise<Message | null> {
+    const client = await getMongoClient();
+    const db = client.db();
+    const collection = db.collection(MESSAGES_COLLECTION);
+
+    const doc = await collection.findOne({
+      _id: messageId,
+      conversationId,
+    } as unknown as Document);
+
+    if (!doc) return null;
+
+    const currentReactions: Array<{ userReactId?: string; userId?: string; emoji: string }> =
+      Array.isArray(doc.reactions) ? doc.reactions : [];
+
+    const userExistingReaction = currentReactions.find(
+      (r) => r.userReactId === userReactId || r.userId === userReactId,
+    );
+
+    // Remove any previous reaction by this user (ensure each user only has 1 reaction)
+    await collection.updateOne(
+      { _id: messageId, conversationId } as unknown as Document,
+      {
+        $pull: {
+          reactions: {
+            $or: [{ userReactId }, { userId: userReactId }],
+          },
+        },
+      } as unknown as Document,
+    );
+
+    // If clicking a different emoji (or hadn't reacted before), add the new reaction
+    if (!userExistingReaction || userExistingReaction.emoji !== emoji) {
+      const reaction = {
+        messageId,
+        userReactId,
+        emoji,
+        createdAt: new Date(),
+      };
+      await collection.updateOne(
+        { _id: messageId, conversationId } as unknown as Document,
+        {
+          $push: {
+            reactions: reaction,
+          },
+        } as unknown as Document,
+      );
+    }
+
+    return this.findById(messageId);
   },
 };

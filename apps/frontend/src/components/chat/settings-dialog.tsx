@@ -84,13 +84,13 @@ export function SettingsDialog({ open, onOpenChange, user }: SettingsDialogProps
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!displayName.trim()) {
-      toast.error('Vui lòng nhập họ và tên');
+      toast.error('Please enter your full name');
       return;
     }
 
     const userId = currentUser?.id;
     if (!userId) {
-      toast.error('Không xác định được ID người dùng');
+      toast.error('User ID not found');
       return;
     }
 
@@ -102,17 +102,17 @@ export function SettingsDialog({ open, onOpenChange, user }: SettingsDialogProps
       });
 
       if (res.success) {
-        toast.success('Cập nhật thông tin cá nhân thành công!');
+        toast.success('Profile updated successfully!');
         // Sync NextAuth session
         await update({
           name: displayName.trim(),
           image: imageUrl,
         });
       } else {
-        toast.error(res.error || 'Cập nhật thất bại');
+        toast.error(res.error || 'Failed to update profile');
       }
     } catch (err: any) {
-      toast.error(err?.message || 'Có lỗi xảy ra khi lưu thông tin');
+      toast.error(err?.message || 'An error occurred while saving profile');
     } finally {
       setIsSavingProfile(false);
     }
@@ -121,21 +121,21 @@ export function SettingsDialog({ open, onOpenChange, user }: SettingsDialogProps
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentPassword) {
-      toast.error('Vui lòng nhập mật khẩu hiện tại');
+      toast.error('Please enter your current password');
       return;
     }
     if (!newPassword || newPassword.length < 6) {
-      toast.error('Mật khẩu mới phải có ít nhất 6 ký tự');
+      toast.error('New password must be at least 6 characters');
       return;
     }
     if (newPassword !== confirmPassword) {
-      toast.error('Mật khẩu mới và xác nhận mật khẩu không khớp');
+      toast.error('New password and confirmation password do not match');
       return;
     }
 
     const userId = currentUser?.id;
     if (!userId) {
-      toast.error('Không xác định được ID người dùng');
+      toast.error('User ID not found');
       return;
     }
 
@@ -148,15 +148,15 @@ export function SettingsDialog({ open, onOpenChange, user }: SettingsDialogProps
       });
 
       if (res.success) {
-        toast.success(res.message || 'Đổi mật khẩu thành công!');
+        toast.success(res.message || 'Password changed successfully!');
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
       } else {
-        toast.error(res.error || 'Cập nhật mật khẩu thất bại');
+        toast.error(res.error || 'Failed to update password');
       }
     } catch (err: any) {
-      toast.error(err?.message || 'Có lỗi xảy ra');
+      toast.error(err?.message || 'An error occurred');
     } finally {
       setIsSavingPassword(false);
     }
@@ -175,8 +175,8 @@ export function SettingsDialog({ open, onOpenChange, user }: SettingsDialogProps
                   <SettingsIcon className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="font-semibold text-base leading-tight">Cài đặt tài khoản</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">Quản lý tài khoản & bảo mật</p>
+                  <h2 className="font-semibold text-base leading-tight">Account Settings</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">Manage account & security</p>
                 </div>
               </div>
 
@@ -193,7 +193,7 @@ export function SettingsDialog({ open, onOpenChange, user }: SettingsDialogProps
                   )}
                 >
                   <User className={cn('w-4 h-4', activeTab === 'profile' ? 'text-primary' : 'text-muted-foreground')} />
-                  <span>Thông tin cá nhân</span>
+                  <span>Profile</span>
                 </button>
 
                 <button
@@ -207,7 +207,7 @@ export function SettingsDialog({ open, onOpenChange, user }: SettingsDialogProps
                   )}
                 >
                   <KeyRound className={cn('w-4 h-4', activeTab === 'password' ? 'text-primary' : 'text-muted-foreground')} />
-                  <span>Cập nhật mật khẩu</span>
+                  <span>Password</span>
                 </button>
               </nav>
             </div>
@@ -216,10 +216,10 @@ export function SettingsDialog({ open, onOpenChange, user }: SettingsDialogProps
             <div className="hidden md:flex flex-col gap-2 p-3.5 rounded-xl bg-muted/40 border border-border/40 text-xs text-muted-foreground mt-auto">
               <div className="flex items-center gap-2 text-foreground font-medium">
                 <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                <span>Bảo mật tài khoản</span>
+                <span>Account Security</span>
               </div>
               <p className="text-[11px] leading-relaxed">
-                Tài khoản của bạn được bảo vệ với mã hóa và chứng thực an toàn.
+                Your account is protected with secure encryption and authentication.
               </p>
             </div>
           </div>
@@ -232,11 +232,11 @@ export function SettingsDialog({ open, onOpenChange, user }: SettingsDialogProps
                   {/* Tab Header */}
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="text-xl font-bold tracking-tight text-foreground">Thông tin cá nhân</h3>
+                      <h3 className="text-xl font-bold tracking-tight text-foreground">Profile Information</h3>
                       <Sparkles className="w-4 h-4 text-amber-500" />
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Cập nhật ảnh đại diện, tên hiển thị và các thông tin cá nhân của bạn.
+                      Update your photo, display name, and personal details.
                     </p>
                   </div>
 
@@ -244,7 +244,7 @@ export function SettingsDialog({ open, onOpenChange, user }: SettingsDialogProps
 
                   {/* Avatar Upload */}
                   <div className="space-y-3">
-                    <Label className="text-sm font-medium text-foreground">Ảnh đại diện</Label>
+                    <Label className="text-sm font-medium text-foreground">Profile Picture</Label>
                     <div className="p-4 rounded-xl border border-border/60 bg-muted/10 flex items-center gap-5">
                       <ImageUpload
                         value={imageUrl}
@@ -254,9 +254,9 @@ export function SettingsDialog({ open, onOpenChange, user }: SettingsDialogProps
                         size={80}
                       />
                       <div className="text-xs text-muted-foreground space-y-1">
-                        <p className="font-medium text-foreground">Tải ảnh mới</p>
-                        <p>Hỗ trợ định dạng PNG, JPG hoặc WebP.</p>
-                        <p className="text-[11px] text-muted-foreground/80">Kích thước tối đa 5MB.</p>
+                        <p className="font-medium text-foreground">Upload new image</p>
+                        <p>Supports PNG, JPG, or WebP.</p>
+                        <p className="text-[11px] text-muted-foreground/80">Maximum size 5MB.</p>
                       </div>
                     </div>
                   </div>
@@ -264,19 +264,19 @@ export function SettingsDialog({ open, onOpenChange, user }: SettingsDialogProps
                   {/* Form Inputs */}
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="displayName" className="text-sm font-medium">Họ và tên / Tên hiển thị</Label>
+                      <Label htmlFor="displayName" className="text-sm font-medium">Full Name / Display Name</Label>
                       <Input
                         id="displayName"
                         value={displayName}
                         onChange={(e) => setDisplayName(e.target.value)}
-                        placeholder="Nhập tên hiển thị..."
+                        placeholder="Enter display name..."
                         className="rounded-lg"
                         required
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="email" className="text-sm font-medium">Địa chỉ Email</Label>
+                      <Label htmlFor="email" className="text-sm font-medium">Email Address</Label>
                       <Input
                         id="email"
                         type="email"
@@ -285,18 +285,18 @@ export function SettingsDialog({ open, onOpenChange, user }: SettingsDialogProps
                         className="rounded-lg bg-muted/40 cursor-not-allowed text-muted-foreground"
                       />
                       <p className="text-[11px] text-muted-foreground">
-                        Email liên kết với tài khoản đăng nhập và không thể thay đổi.
+                        Email associated with your login account cannot be changed.
                       </p>
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="bio" className="text-sm font-medium">Tiểu sử (Bio)</Label>
+                      <Label htmlFor="bio" className="text-sm font-medium">Bio</Label>
                       <textarea
                         id="bio"
                         rows={3}
                         value={bio}
                         onChange={(e) => setBio(e.target.value)}
-                        placeholder="Giới thiệu ngắn về bạn..."
+                        placeholder="Tell us a little about yourself..."
                         className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                       />
                     </div>
@@ -312,18 +312,18 @@ export function SettingsDialog({ open, onOpenChange, user }: SettingsDialogProps
                     disabled={isSavingProfile}
                     className="rounded-lg"
                   >
-                    Hủy
+                    Cancel
                   </Button>
                   <Button type="submit" disabled={isSavingProfile} className="rounded-lg font-medium">
                     {isSavingProfile ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Đang lưu...
+                        Saving...
                       </>
                     ) : (
                       <>
                         <Check className="w-4 h-4 mr-2" />
-                        Lưu thay đổi
+                        Save changes
                       </>
                     )}
                   </Button>
@@ -335,11 +335,11 @@ export function SettingsDialog({ open, onOpenChange, user }: SettingsDialogProps
                   {/* Tab Header */}
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="text-xl font-bold tracking-tight text-foreground">Cập nhật mật khẩu</h3>
+                      <h3 className="text-xl font-bold tracking-tight text-foreground">Change Password</h3>
                       <Lock className="w-4 h-4 text-primary" />
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Đảm bảo an toàn tài khoản bằng cách tạo mật khẩu mạnh có ít nhất 6 ký tự.
+                      Ensure your account is using a strong password with at least 6 characters.
                     </p>
                   </div>
 
@@ -349,7 +349,7 @@ export function SettingsDialog({ open, onOpenChange, user }: SettingsDialogProps
                   <div className="space-y-4">
                     {/* Current Password */}
                     <div className="space-y-2">
-                      <Label htmlFor="currentPassword">Mật khẩu hiện tại</Label>
+                      <Label htmlFor="currentPassword">Current Password</Label>
                       <div className="relative">
                         <Input
                           id="currentPassword"
@@ -372,7 +372,7 @@ export function SettingsDialog({ open, onOpenChange, user }: SettingsDialogProps
 
                     {/* New Password */}
                     <div className="space-y-2">
-                      <Label htmlFor="newPassword">Mật khẩu mới</Label>
+                      <Label htmlFor="newPassword">New Password</Label>
                       <div className="relative">
                         <Input
                           id="newPassword"
@@ -395,7 +395,7 @@ export function SettingsDialog({ open, onOpenChange, user }: SettingsDialogProps
 
                     {/* Confirm Password */}
                     <div className="space-y-2">
-                      <Label htmlFor="confirmPassword">Xác nhận mật khẩu mới</Label>
+                      <Label htmlFor="confirmPassword">Confirm New Password</Label>
                       <div className="relative">
                         <Input
                           id="confirmPassword"
@@ -417,10 +417,10 @@ export function SettingsDialog({ open, onOpenChange, user }: SettingsDialogProps
                     </div>
 
                     <div className="p-3 rounded-lg bg-muted/30 border border-border/50 text-xs text-muted-foreground space-y-1">
-                      <p className="font-semibold text-foreground">Yêu cầu mật khẩu:</p>
+                      <p className="font-semibold text-foreground">Password requirements:</p>
                       <ul className="list-disc list-inside space-y-0.5 text-[11px]">
-                        <li>Tối thiểu 6 ký tự</li>
-                        <li>Nên bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt</li>
+                        <li>At least 6 characters</li>
+                        <li>Recommended: uppercase, lowercase, numbers, and special characters</li>
                       </ul>
                     </div>
                   </div>
@@ -435,18 +435,18 @@ export function SettingsDialog({ open, onOpenChange, user }: SettingsDialogProps
                     disabled={isSavingPassword}
                     className="rounded-lg"
                   >
-                    Hủy
+                    Cancel
                   </Button>
                   <Button type="submit" disabled={isSavingPassword} className="rounded-lg font-medium">
                     {isSavingPassword ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Đang đổi...
+                        Changing...
                       </>
                     ) : (
                       <>
                         <KeyRound className="w-4 h-4 mr-2" />
-                        Đổi mật khẩu
+                        Change Password
                       </>
                     )}
                   </Button>
