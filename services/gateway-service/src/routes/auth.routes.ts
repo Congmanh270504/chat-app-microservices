@@ -1,15 +1,21 @@
 import {
   changePassword,
+  googleLogin,
   loginUser,
   refreshTokens,
   registerUser,
+  resetPassword,
   revokeTokens,
 } from '@/controllers/auth.controller';
+import { requireAdmin } from '@/middleware/require-admin';
+import { requireAuth } from '@/middleware/require-auth';
 import {
   changePasswordSchema,
+  googleLoginSchema,
   loginSchema,
   refreshSchema,
   registerSchema,
+  resetPasswordSchema,
   revokeSchema,
 } from '@/validation/auth.schema';
 import { asyncHandler, validateRequest } from '@chatapp/common';
@@ -27,4 +33,11 @@ authRouter.post(
   validateRequest({ body: changePasswordSchema }),
   asyncHandler(changePassword),
 );
-
+authRouter.post(
+  '/reset-password',
+  requireAuth,
+  requireAdmin,
+  validateRequest({ body: resetPasswordSchema }),
+  asyncHandler(resetPassword),
+);
+authRouter.post('/google', validateRequest({ body: googleLoginSchema }), asyncHandler(googleLogin));

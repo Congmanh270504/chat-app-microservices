@@ -13,6 +13,7 @@ const toMessage = (doc: WithId<Document>): Message => ({
   conversationId: String(doc.conversationId),
   senderId: String(doc.senderId),
   body: String(doc.body),
+  event: Boolean(doc.event),
   createdAt: new Date(doc.createdAt as string | number | Date),
   reactions: Array.isArray(doc.reactions)
     ? doc.reactions.map((r: WithId<Document>) => ({
@@ -26,7 +27,12 @@ const toMessage = (doc: WithId<Document>): Message => ({
 });
 
 export const messageRepository = {
-  async create(conversationId: string, senderId: string, body: string): Promise<Message> {
+  async create(
+    conversationId: string,
+    senderId: string,
+    body: string,
+    event: boolean = false,
+  ): Promise<Message> {
     const client = await getMongoClient();
     const db = client.db();
     const collection = db.collection(MESSAGES_COLLECTION);
@@ -36,6 +42,7 @@ export const messageRepository = {
       conversationId,
       senderId,
       body,
+      event: Boolean(event),
       createdAt: now,
       status: MessageStatus.SENT,
     };

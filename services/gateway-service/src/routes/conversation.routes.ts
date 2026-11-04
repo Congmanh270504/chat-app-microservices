@@ -5,21 +5,24 @@ import {
   listConversationsQuerySchema,
 } from '@/validation/conversation.schema';
 import { Router } from 'express';
-import { validateRequest } from '@chatapp/common';
+import { asyncHandler, validateRequest } from '@chatapp/common';
 import {
   createConversationHandler,
   createMessageHandler,
   getConversationHandler,
+  getUnreadCountHandler,
   listConversationsHandler,
   listMessagesHandler,
   addReactionHandler,
   markConversationAsReadHandler,
+  searchMessagesHandler,
 } from '@/controllers/conversation.controller';
 import {
   createMessageBodySchema,
   listMessagesQuerySchema,
   addReactionBodySchema,
   messageParamsSchema,
+  searchMessagesQuerySchema,
 } from '@/validation/message.schema';
 
 export const conversationRouter: Router = Router();
@@ -38,6 +41,8 @@ conversationRouter.get(
   listConversationsHandler,
 );
 
+conversationRouter.get('/unread-count', getUnreadCountHandler);
+
 conversationRouter.get(
   '/:id',
   validateRequest({ params: conversationIdParamsSchema }),
@@ -54,6 +59,12 @@ conversationRouter.get(
   '/:id/messages',
   validateRequest({ params: conversationIdParamsSchema, query: listMessagesQuerySchema }),
   listMessagesHandler,
+);
+
+conversationRouter.get(
+  '/:id/messages/search',
+  validateRequest({ params: conversationIdParamsSchema, query: searchMessagesQuerySchema }),
+  searchMessagesHandler,
 );
 
 conversationRouter.post(

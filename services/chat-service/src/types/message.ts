@@ -18,6 +18,7 @@ export interface Message {
   conversationId: string;
   senderId: string;
   body: string;
+  event : boolean;
   createdAt: Date;
   reactions: Reaction[];
   status: MessageStatus;
@@ -27,6 +28,7 @@ export interface CreateMessageInput {
   conversationId: string;
   senderId: string;
   body: string;
+  event?: boolean;
 }
 
 export interface MessageListOptions {

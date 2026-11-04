@@ -62,6 +62,21 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
+
+  meilisearch:
+    profiles: ["local-db"]
+    image: getmeili/meilisearch:v1.12
+    container_name: chatapp-meilisearch
+    ports:
+      - "${MEILISEARCH_PORT:-7700}:7700"
+    environment:
+      MEILI_ENV: ${MEILI_ENV:-development}
+      MEILI_MASTER_KEY: ${MEILISEARCH_MASTER_KEY:-masterKey123456}
+    volumes:
+      - meilisearch-data:/meili_data
+    networks:
+      - chatapp-network
+    restart: unless-stopped
  
   user-db:
     profiles: ["local-db"]
@@ -212,6 +227,8 @@ services:
       PUSHER_KEY: ${PUSHER_KEY}
       PUSHER_SECRET: ${PUSHER_SECRET}
       PUSHER_CLUSTER: ${PUSHER_CLUSTER}
+      MEILISEARCH_HOST: ${MEILISEARCH_HOST:-http://meilisearch:7700}
+      MEILISEARCH_MASTER_KEY: ${MEILISEARCH_MASTER_KEY:-masterKey123456}
     # Cloud database / message queue in use, no depends_on for local db
     networks:
       - chatapp-network
@@ -229,6 +246,7 @@ volumes:
   auth-db-data:
   redis-data:
   rabbitmq-data:
+  meilisearch-data:
 
 
 networks:

@@ -127,12 +127,11 @@ export function SearchSelectInput({
                   }}
                   className="w-full flex gap-2 cursor-pointer rounded-sm px-2 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
                 >
-                  {opt.image_url && (
-                    <Avatar>
-                      <AvatarImage src={opt.image_url} alt={opt.label} />
-                      <AvatarFallback>{opt.label[0]}</AvatarFallback>
-                    </Avatar>
-                  )}
+                  <Avatar>
+                    {opt.image_url && <AvatarImage src={opt.image_url} alt={opt.label} />}
+                    <AvatarFallback>{opt.label[0]}</AvatarFallback>
+                  </Avatar>
+
                   <div>
                     <span className="block truncate font-medium">{opt.label}</span>
                     {opt.description && (

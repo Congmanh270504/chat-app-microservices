@@ -21,6 +21,7 @@ export interface UserDto {
   createdAt: string;
   updatedAt: string;
   image_url?: string;
+  role?: Role;
 }
 
 export interface UserResponse {

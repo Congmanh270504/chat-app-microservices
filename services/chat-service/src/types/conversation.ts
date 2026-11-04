@@ -10,6 +10,7 @@ export interface Conversation {
   id: string;
   title: string | null;
   participantIds: string[];
+  isGroup?: boolean;
   createdAt: Date;
   updatedAt: Date;
   lastMessageAt: Date | null;
@@ -20,6 +21,7 @@ export interface Conversation {
 }
 
 export interface CreateConversationInput {
+  id?: string;
   title?: string | null;
   participantIds: string[];
 }

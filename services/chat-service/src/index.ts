@@ -13,10 +13,11 @@ import { logger } from '@/utils/logger';
 import { closeMongoClient, getMongoClient } from '@/clients/mongo.client';
 import { closeRedis, connectRedis } from '@/clients/redis.client';
 import { startConsumers } from '@/messaging/rabbitmq.consumer';
+import { setupMeilisearch } from '@/clients/meilisearch.client';
 
 const main = async () => {
   try {
-    await Promise.all([getMongoClient(), connectRedis(), startConsumers()]);
+    await Promise.all([getMongoClient(), connectRedis(), startConsumers(), setupMeilisearch()]);
 
     const app = createApp();
     const server = createServer(app);

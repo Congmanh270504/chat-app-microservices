@@ -13,6 +13,7 @@ import {
   listMessagesQuerySchema,
   addReactionBodySchema,
   messageParamsSchema,
+  searchMessagesQuerySchema,
 } from '@/validation/message.schema';
 
 export const createConversationHandler: RequestHandler = asyncHandler(async (req, res) => {
@@ -26,6 +27,7 @@ export const createConversationHandler: RequestHandler = asyncHandler(async (req
   }
 
   const conversation = await chatProxyService.createConversation(user.id, {
+    id: payload.id,
     title: payload.title,
     participantIds: uniqueParticipantIds,
   });
@@ -43,6 +45,12 @@ export const listConversationsHandler: RequestHandler = asyncHandler(async (req,
 
   const conversations = await chatProxyService.listConversations(user.id);
   res.json({ data: conversations });
+});
+
+export const getUnreadCountHandler: RequestHandler = asyncHandler(async (req, res) => {
+  const user = getAuthenticatedUser(req);
+  const count = await chatProxyService.getUnreadCount(user.id);
+  res.json({ data: { count } });
 });
 
 export const getConversationHandler: RequestHandler = asyncHandler(async (req, res) => {
@@ -63,6 +71,7 @@ export const createMessageHandler: RequestHandler = asyncHandler(async (req, res
   const payload = createMessageBodySchema.parse(req.body);
   const message = await chatProxyService.createMessage(id, user.id, {
     body: payload.body,
+    event: payload.event,
   });
   res.status(201).json({ data: message });
 });
@@ -92,4 +101,13 @@ export const markConversationAsReadHandler: RequestHandler = asyncHandler(async 
   const { id } = conversationIdParamsSchema.parse(req.params);
   const conversation = await chatProxyService.markConversationAsRead(id, user.id);
   res.json({ data: conversation });
+});
+
+export const searchMessagesHandler: RequestHandler = asyncHandler(async (req, res) => {
+  const user = getAuthenticatedUser(req);
+  const { id } = conversationIdParamsSchema.parse(req.params);
+  const query = searchMessagesQuerySchema.parse(req.query);
+
+  const results = await chatProxyService.searchMessages(id, user.id, query);
+  res.json({ data: results });
 });

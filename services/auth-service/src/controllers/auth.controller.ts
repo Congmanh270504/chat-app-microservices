@@ -1,4 +1,11 @@
-import { changePassword, login, refreshTokens, register, revokeRefreshToken } from '@/services/auth.service';
+import {
+  changePassword,
+  login,
+  loginOrRegisterOAuth,
+  refreshTokens,
+  register,
+  revokeRefreshToken,
+} from '@/services/auth.service';
 import { LoginInput, RegisterInput } from '@/types/auth';
 import { asyncHandler, HttpError } from '@chatapp/common';
 import { RequestHandler } from 'express';
@@ -39,3 +46,14 @@ export const changePasswordHandler: RequestHandler = asyncHandler(async (req, re
   res.json(result);
 });
 
+export const resetPasswordHandler: RequestHandler = asyncHandler(async (req, res) => {
+  const { userId, newPassword, email, displayName } = req.body;
+  const result = await changePassword({ userId, newPassword, email, displayName });
+  res.json(result);
+});
+
+export const googleLoginHandler: RequestHandler = asyncHandler(async (req, res) => {
+  const payload = req.body as { email: string; displayName?: string; image_url?: string };
+  const result = await loginOrRegisterOAuth(payload);
+  res.json(result);
+});

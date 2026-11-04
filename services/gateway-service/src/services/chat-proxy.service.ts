@@ -44,6 +44,7 @@ export interface ConversationDto {
   id: string;
   title: string | null;
   participantIds: string[];
+  isGroup?: boolean;
   createdAt: string;
   updatedAt: string;
   lastMessageAt: string | null;
@@ -65,6 +66,7 @@ export interface MessageDto {
   conversationId: string;
   senderId: string;
   body: string;
+  event?: boolean;
   createdAt: string;
   reactions: ReactionDto[];
   status?: string;
@@ -87,12 +89,14 @@ export interface MessageListResponse {
 }
 
 export interface CreateConversationPayload {
+  id?: string;
   title?: string | null;
   participantIds: string[];
 }
 
 export interface CreateMessagePayload {
   body: string;
+  event?: boolean;
 }
 
 export const chatProxyService = {
@@ -116,6 +120,17 @@ export const chatProxyService = {
         headers: { [USER_ID_HEADER]: userId },
       });
       return response.data.data;
+    } catch (error) {
+      return handleAxiosError(error);
+    }
+  },
+
+  async getUnreadCount(userId: string): Promise<number> {
+    try {
+      const response = await client.get<{ data: { count: number } }>('/conversations/unread-count', {
+        headers: { [USER_ID_HEADER]: userId },
+      });
+      return response.data.data.count;
     } catch (error) {
       return handleAxiosError(error);
     }
@@ -199,6 +214,25 @@ export const chatProxyService = {
         `/conversations/${conversationId}/read`,
         {},
         {
+          headers: { [USER_ID_HEADER]: userId },
+        },
+      );
+      return response.data.data;
+    } catch (error) {
+      return handleAxiosError(error);
+    }
+  },
+
+  async searchMessages(
+    conversationId: string,
+    userId: string,
+    query: { q: string; limit?: number; offset?: number },
+  ) {
+    try {
+      const response = await client.get<{ data: any }>(
+        `/conversations/${conversationId}/messages/search`,
+        {
+          params: query,
           headers: { [USER_ID_HEADER]: userId },
         },
       );

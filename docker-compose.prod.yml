@@ -1,0 +1,115 @@
+# ============================================
+# Production compose (VM Google Cloud, DB dùng Cloud SaaS)
+# Chạy: docker compose -f docker-compose.prod.yml up -d --build
+# - Chỉ gateway mở ra ngoài (127.0.0.1:4000, Caddy reverse proxy vào)
+# - Các service nội bộ chỉ gọi nhau qua docker network
+# ============================================
+x-service-defaults: &service-defaults
+  restart: unless-stopped
+  networks:
+    - chatapp-network
+  logging:
+    driver: json-file
+    options:
+      max-size: '10m'
+      max-file: '3'
+
+services:
+  gateway-service:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: services/gateway-service/Dockerfile
+    container_name: chatapp-gateway-service
+    ports:
+      - '127.0.0.1:4000:4000'
+    environment:
+      NODE_ENV: production
+      GATEWAY_PORT: 4000
+      USER_SERVICE_URL: http://user-service:4001
+      AUTH_SERVICE_URL: http://auth-service:4003
+      CHAT_SERVICE_URL: http://chat-service:4002
+      JWT_SECRET: ${JWT_SECRET}
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN}
+    depends_on:
+      - auth-service
+      - user-service
+      - chat-service
+    mem_limit: 192m
+
+  auth-service:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: services/auth-service/Dockerfile
+    container_name: chatapp-auth-service
+    environment:
+      NODE_ENV: production
+      AUTH_SERVICE_PORT: 4003
+      AUTH_DB_URL: ${AUTH_DB_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1d}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-30d}
+      RABBITMQ_URL: ${RABBITMQ_URL}
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN}
+    mem_limit: 192m
+
+  user-service:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: services/user-service/Dockerfile
+    container_name: chatapp-user-service
+    environment:
+      NODE_ENV: production
+      USER_SERVICE_PORT: 4001
+      USER_DB_URL: ${USER_DB_URL}
+      RABBITMQ_URL: ${RABBITMQ_URL}
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN}
+    mem_limit: 192m
+
+  chat-service:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: services/chat-service/Dockerfile
+    container_name: chatapp-chat-service
+    environment:
+      NODE_ENV: production
+      CHAT_SERVICE_PORT: 4002
+      MONGO_URL: ${MONGO_URL}
+      REDIS_URL: ${REDIS_URL}
+      RABBITMQ_URL: ${RABBITMQ_URL}
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN}
+      JWT_SECRET: ${JWT_SECRET}
+      PUSHER_APP_ID: ${PUSHER_APP_ID}
+      PUSHER_KEY: ${PUSHER_KEY}
+      PUSHER_SECRET: ${PUSHER_SECRET}
+      PUSHER_CLUSTER: ${PUSHER_CLUSTER}
+      MEILISEARCH_HOST: http://meilisearch:7700
+      MEILISEARCH_MASTER_KEY: ${MEILISEARCH_MASTER_KEY}
+    depends_on:
+      - meilisearch
+    mem_limit: 256m
+
+  # Meilisearch chạy ngay trên VM (không có bản cloud free lâu dài)
+  meilisearch:
+    <<: *service-defaults
+    image: getmeili/meilisearch:v1.12
+    container_name: chatapp-meilisearch
+    environment:
+      MEILI_ENV: production
+      MEILI_MASTER_KEY: ${MEILISEARCH_MASTER_KEY}
+      MEILI_NO_ANALYTICS: 'true'
+      MEILI_MAX_INDEXING_MEMORY: 100Mb
+    volumes:
+      - meilisearch-data:/meili_data
+    mem_limit: 256m
+
+volumes:
+  meilisearch-data:
+
+networks:
+  chatapp-network:
+    driver: bridge

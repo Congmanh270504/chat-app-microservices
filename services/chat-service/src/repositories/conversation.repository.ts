@@ -33,24 +33,29 @@ const getCollection = async (): Promise<Collection<ConversationDocument>> => {
   return client.db().collection<ConversationDocument>(CONVERSATIONS_COLLECTION);
 };
 
-const toConversation = (doc: ConversationDocument | WithId<Document>): Conversation => ({
-  id: String(doc._id),
-  title: typeof doc.title === 'string' ? doc.title : null,
-  participantIds: Array.isArray(doc.participantIds) ? (doc.participantIds as string[]) : [],
-  createdAt: new Date(doc.createdAt as string | number | Date),
-  updatedAt: new Date(doc.updatedAt as string | number | Date),
-  lastMessageAt: doc.lastMessageAt ? new Date(doc.lastMessageAt as string | number | Date) : null,
-  lastMessagePreview: typeof doc.lastMessagePreview === 'string' ? doc.lastMessagePreview : null,
-  lastMessageStatus: (doc.lastMessageStatus as MessageStatus | null) ?? null,
-  lastMessageSenderId: doc.lastMessageSenderId ? String(doc.lastMessageSenderId) : null,
-  participantReads: Array.isArray(doc.participantReads)
-    ? doc.participantReads.map((p: any) => ({
-        userId: String(p.userId),
-        lastReadAt: new Date(p.lastReadAt as string | number | Date),
-        lastReadMessageId: p.lastReadMessageId ? String(p.lastReadMessageId) : null,
-      }))
-    : [],
-});
+const toConversation = (doc: ConversationDocument | WithId<Document>): Conversation => {
+  const participantIds = Array.isArray(doc.participantIds) ? (doc.participantIds as string[]) : [];
+  const isGroup = participantIds.length > 2 || Boolean(doc.title);
+  return {
+    id: String(doc._id),
+    title: typeof doc.title === 'string' ? doc.title : null,
+    participantIds,
+    isGroup,
+    createdAt: new Date(doc.createdAt as string | number | Date),
+    updatedAt: new Date(doc.updatedAt as string | number | Date),
+    lastMessageAt: doc.lastMessageAt ? new Date(doc.lastMessageAt as string | number | Date) : null,
+    lastMessagePreview: typeof doc.lastMessagePreview === 'string' ? doc.lastMessagePreview : null,
+    lastMessageStatus: (doc.lastMessageStatus as MessageStatus | null) ?? null,
+    lastMessageSenderId: doc.lastMessageSenderId ? String(doc.lastMessageSenderId) : null,
+    participantReads: Array.isArray(doc.participantReads)
+      ? doc.participantReads.map((p: any) => ({
+          userId: String(p.userId),
+          lastReadAt: new Date(p.lastReadAt as string | number | Date),
+          lastReadMessageId: p.lastReadMessageId ? String(p.lastReadMessageId) : null,
+        }))
+      : [],
+  };
+};
 
 const toConversationSummary = (doc: ConversationDocument | WithId<Document>): ConversationSummary =>
   toConversation(doc);
@@ -59,17 +64,21 @@ export const conversationRepository = {
   async create(input: CreateConversationInput): Promise<Conversation> {
     const collection = await getCollection();
 
-    const isExitMemberConversation = await collection.findOne({
-      participantIds: { $all: input.participantIds },
-    });
+    // For direct chats (2 members without a custom title), return existing if present
+    if (!input.title && input.participantIds.length === 2) {
+      const isExitMemberConversation = await collection.findOne({
+        title: null,
+        participantIds: { $size: 2, $all: input.participantIds },
+      });
 
-    if (isExitMemberConversation) {
-      return toConversation(isExitMemberConversation);
+      if (isExitMemberConversation) {
+        return toConversation(isExitMemberConversation);
+      }
     }
 
     const now = new Date();
     const document: ConversationDocument = {
-      _id: randomUUID(),
+      _id: input.id || randomUUID(),
       title: input.title ?? null,
       participantIds: input.participantIds,
       createdAt: now,
@@ -186,6 +195,35 @@ export const conversationRepository = {
 
     const updated = await this.findById(conversationId);
     return updated ? { conversation: updated, lastReadAt: now } : null;
+  },
+
+  async getUnreadCount(userId: string): Promise<number> {
+    const conversations = await this.findSummaries({ participantId: userId });
+    if (!conversations || conversations.length === 0) return 0;
+
+    const client = await getMongoClient();
+    const db = client.db();
+    const messagesCollection = db.collection(MESSAGES_COLLECTION);
+
+    const orConditions = conversations
+      .filter((conv) => conv.id)
+      .map((conv) => {
+        const userRead = conv.participantReads?.find((p) => p.userId === userId);
+        const lastReadAt = userRead?.lastReadAt ? new Date(userRead.lastReadAt) : new Date(0);
+        return {
+          conversationId: conv.id,
+          senderId: { $ne: userId },
+          createdAt: { $gt: lastReadAt },
+        };
+      });
+
+    if (orConditions.length === 0) return 0;
+
+    const count = await messagesCollection.countDocuments({
+      $or: orConditions,
+    });
+
+    return count;
   },
 
   async removeAll(): Promise<void> {

@@ -14,6 +14,8 @@ const envSchema = z.object({
   PUSHER_KEY: z.string().optional(),
   PUSHER_SECRET: z.string().optional(),
   PUSHER_CLUSTER: z.string().optional(),
+  MEILISEARCH_HOST: z.string().default('http://127.0.0.1:7700'),
+  MEILISEARCH_MASTER_KEY: z.string().default('masterKey123456'),
 });
 
 type EnvType = z.infer<typeof envSchema>;

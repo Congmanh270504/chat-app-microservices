@@ -12,6 +12,7 @@ import {
   listMessagesQuerySchema,
   addReactionBodySchema,
   messageParamsSchema,
+  searchMessagesQuerySchema,
 } from '@/validation/message.schema';
 import { messageService } from '@/services/message.service';
 
@@ -30,6 +31,7 @@ export const createConversationHandler: RequestHandler = asyncHandler(async (req
   }
 
   const conversation = await conversationService.createConversation({
+    id: payload.id,
     title: payload.title,
     participantIds: uniqueParticipantIds,
   });
@@ -45,6 +47,12 @@ export const listConversationHandler: RequestHandler = asyncHandler(async (req, 
 
   const conversations = await conversationService.listConversation({ participantId: user.id });
   res.status(201).json({ data: conversations });
+});
+
+export const getUnreadCountHandler: RequestHandler = asyncHandler(async (req, res) => {
+  const user = getAuthenticatedUser(req);
+  const count = await conversationService.getUnreadCount(user.id);
+  res.status(200).json({ data: { count } });
 });
 
 export const getConversationHandler: RequestHandler = asyncHandler(async (req, res) => {
@@ -63,7 +71,12 @@ export const createMessageHandler: RequestHandler = asyncHandler(async (req, res
   const user = getAuthenticatedUser(req);
   const conversationId = parsedConversation(req.params);
   const payload = createMessageBodySchema.parse(req.body);
-  const message = await messageService.createMessage(conversationId, user.id, payload.body);
+  const message = await messageService.createMessage(
+    conversationId,
+    user.id,
+    payload.body,
+    payload.event,
+  );
   res.status(201).json({ data: message });
 });
 
@@ -99,4 +112,22 @@ export const markConversationAsReadHandler: RequestHandler = asyncHandler(async 
   const conversationId = parsedConversation(req.params);
   const result = await conversationService.markConversationAsRead(conversationId, user.id);
   res.status(200).json({ data: result.conversation });
+});
+
+export const searchMessagesHandler: RequestHandler = asyncHandler(async (req, res) => {
+  const user = getAuthenticatedUser(req);
+  const conversationId = parsedConversation(req.params);
+  const query = searchMessagesQuerySchema.parse(req.query);
+
+  const searchResults = await messageService.searchMessages(
+    conversationId,
+    user.id,
+    query.q,
+    {
+      limit: query.limit,
+      offset: query.offset,
+    },
+  );
+
+  res.status(200).json({ data: searchResults });
 });

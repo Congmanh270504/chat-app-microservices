@@ -10,9 +10,15 @@ import { messageRepository } from '@/repositories/message.repository';
 import { conversationService } from '@/services/conversation.service';
 import { HttpError } from '@chatapp/common';
 import { pusherServer } from '@/lib/pusher';
+import { indexMessageDoc, searchMessagesInMeili } from '@/clients/meilisearch.client';
 
 export const messageService = {
-  async createMessage(conversationId: string, senderId: string, body: string): Promise<Message> {
+  async createMessage(
+    conversationId: string,
+    senderId: string,
+    body: string,
+    event: boolean = false,
+  ): Promise<Message> {
     // Ensure conversation exists before inserting the message
     const conversation = await conversationService.getConversationById(conversationId);
 
@@ -20,13 +26,25 @@ export const messageService = {
       throw new HttpError(403, 'Sender is not part of this conversation');
     }
 
-    const message = await messageRepository.create(conversationId, senderId, body);
+    const message = await messageRepository.create(conversationId, senderId, body, event);
     await conversationService.touchConversation(
       conversationId,
       body.slice(0, 120),
       message.status,
       senderId,
     );
+
+    // Sync to Meilisearch in background
+    indexMessageDoc({
+      id: message.id,
+      conversationId,
+      senderId,
+      body,
+      createdAtTimestamp: new Date(message.createdAt).getTime(),
+      createdAt: message.createdAt.toISOString(),
+    }).catch((err) => {
+      console.error('Failed to index message in Meilisearch:', err);
+    });
 
     try {
       await pusherServer.trigger(`chat-${conversationId}`, 'new-message', message);
@@ -123,5 +141,25 @@ export const messageService = {
     }
 
     return updatedMessage;
+  },
+
+  async searchMessages(
+    conversationId: string,
+    requesterId: string,
+    query: string,
+    options: { limit?: number; offset?: number } = {},
+  ) {
+    const conversation = await conversationService.getConversationById(conversationId);
+
+    if (!conversation.participantIds.includes(requesterId)) {
+      throw new HttpError(403, 'Requester is not part of this conversation');
+    }
+
+    return searchMessagesInMeili({
+      conversationId,
+      query,
+      limit: options.limit,
+      offset: options.offset,
+    });
   },
 };

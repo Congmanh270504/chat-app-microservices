@@ -2,16 +2,20 @@ import { Router } from 'express';
 import { validateRequest } from '@chatapp/common';
 import {
   changePasswordHandler,
+  googleLoginHandler,
   loginHandler,
   refreshHandler,
   registerHandler,
+  resetPasswordHandler,
   revokeHandler,
 } from '@/controllers/auth.controller';
 import {
   changePasswordSchema,
+  googleLoginSchema,
   loginSchema,
   refreshSchema,
   registerSchema,
+  resetPasswordSchema,
   revokeSchema,
 } from '@/routes/auth.schema';
 
@@ -26,4 +30,13 @@ authRouter.post(
   validateRequest({ body: changePasswordSchema.shape.body }),
   changePasswordHandler,
 );
-
+authRouter.post(
+  '/reset-password',
+  validateRequest({ body: resetPasswordSchema.shape.body }),
+  resetPasswordHandler,
+);
+authRouter.post(
+  '/google',
+  validateRequest({ body: googleLoginSchema.shape.body }),
+  googleLoginHandler,
+);

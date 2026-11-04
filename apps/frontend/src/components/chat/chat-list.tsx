@@ -1,27 +1,32 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 'use client';
 
-import * as React from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import { toast } from 'sonner';
-import { useSession } from 'next-auth/react';
-import { Edit } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { Button } from '@/components/ui/button';
+import { getPopulatedConversationsAction, getUsersAction } from '@/app/chat/chat.actions';
 import { SearchSelectInput, type SearchSelectOption } from '@/components/SearchSelectInput';
-import {
-  getUsersAction,
-  createConversationAction,
-  getPopulatedConversationsAction,
-} from '@/app/chat/chat.actions';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { ToggleTabs } from '@/components/ui/toggle-tabs';
+import { Button } from '@/components/ui/button';
+import { CreateGroupDialog } from '@/components/chat/create-group-dialog';
+import { Users } from 'lucide-react';
 import { pusherClient } from '@/lib/pusher';
 import { cn } from '@/lib/utils';
+import { useSession } from 'next-auth/react';
+import { useParams, useRouter } from 'next/navigation';
+import * as React from 'react';
+import { toast } from 'sonner';
+
+const FILTER_TABS = [
+  { label: 'All Messages', value: 'all' },
+  { label: 'User', value: 'direct' },
+  { label: 'Groups', value: 'groups' },
+];
 
 export interface PopulatedConversation {
   id: string;
   title: string | null;
   participantIds: string[];
+  isGroup?: boolean;
   createdAt: Date | string;
   updatedAt: Date | string;
   lastMessageAt: Date | string | null;
@@ -52,6 +57,19 @@ export function ChatList({ initialConversations = [], currentUserId: propUserId 
   const [userOptions, setUserOptions] = React.useState<SearchSelectOption[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = React.useState(false);
   const [isCreating, setIsCreating] = React.useState(false);
+  const [isGroupDialogOpen, setIsGroupDialogOpen] = React.useState(false);
+  const [filterTab, setFilterTab] = React.useState('all');
+
+  const filteredConversations = React.useMemo(() => {
+    return conversations.filter((conv) => {
+      const isGroup = Boolean(
+        conv.title || (conv.participantIds && conv.participantIds.length > 2),
+      );
+      if (filterTab === 'direct') return !isGroup;
+      if (filterTab === 'groups') return isGroup;
+      return true;
+    });
+  }, [conversations, filterTab]);
 
   React.useEffect(() => {
     setConversations(initialConversations);
@@ -126,17 +144,23 @@ export function ChatList({ initialConversations = [], currentUserId: propUserId 
   const handleSelectUser = async (option: SearchSelectOption) => {
     setIsCreating(true);
     try {
-      const res = await createConversationAction(option.value);
-      if (res.success && res.data?.id) {
-        toast.success('Chuyển tới cuộc trò chuyện');
-        await refreshConversations();
-        router.push(`/chat/${res.data.id}`);
-        router.refresh();
+      // Check if conversation already exists between current user and target user
+      const existingConv = conversations.find((conv) => {
+        if (conv.title) return false;
+        const pIds = conv.participantIds || [];
+        return pIds.includes(option.value);
+      });
+
+      if (existingConv) {
+        toast.success('Switch to conversation');
+        router.push(`/chat/${existingConv.id}`);
       } else {
-        toast.error(res.error || 'Tạo cuộc trò chuyện thất bại');
+        // Draft conversation: generate UUIDv4 and redirect without saving to DB yet
+        const draftId = crypto.randomUUID();
+        router.push(`/chat/${draftId}?recipientId=${option.value}`);
       }
     } catch (err: any) {
-      toast.error('Có lỗi xảy ra khi tạo cuộc trò chuyện');
+      console.error('Error when open conversation:', err);
     } finally {
       setIsCreating(false);
       setSelectedValue('');
@@ -210,10 +234,10 @@ export function ChatList({ initialConversations = [], currentUserId: propUserId 
       );
     }
     if (status === 'PENDING') {
-      return <span className="text-[10px] text-muted-foreground italic">Đang gửi...</span>;
+      return <span className="text-[10px] text-muted-foreground italic">Sending...</span>;
     }
     if (status === 'BROKEN') {
-      return <span className="text-[10px] text-red-500 font-semibold">Lỗi</span>;
+      return <span className="text-[10px] text-red-500 font-semibold">Error</span>;
     }
     return null;
   };
@@ -221,14 +245,17 @@ export function ChatList({ initialConversations = [], currentUserId: propUserId 
   return (
     <div className="flex flex-col h-full bg-background ">
       {/* Messages Section */}
-      <div className="p-3 flex items-center justify-between mt-0 ">
-        <h2 className="font-bold text-xl p-0  mt-0">Messages</h2>
+      <div className="p-3 flex items-center justify-between mt-0">
+        <h2 className="font-bold text-xl p-0 mt-0">Messages</h2>
         <Button
-          variant="ghost"
-          size="icon"
-          className="mt-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-full"
+          variant="outline"
+          size="sm"
+          onClick={() => setIsGroupDialogOpen(true)}
+          className="rounded-xl h-8 px-2.5 text-xs font-semibold gap-1.5 hover:bg-muted text-foreground border-border/60 cursor-pointer"
+          title="Tạo nhóm mới"
         >
-          <Edit size={20} />
+          <Users className="size-4 text-blue-600 dark:text-blue-400" />
+          <span>Create group</span>
         </Button>
       </div>
 
@@ -245,51 +272,30 @@ export function ChatList({ initialConversations = [], currentUserId: propUserId 
         />
       </div>
 
-      {/* Filter Chips */}
+      {/* Filter Tabs */}
       <div className="px-3 pb-2 border-b">
-        <ScrollArea className="w-full whitespace-nowrap">
-          <div className="flex w-max space-x-2 pb-2">
-            <Button
-              variant="default"
-              className="rounded-full bg-blue-600 hover:bg-blue-700 h-8 text-xs px-4"
-            >
-              All Messages
-            </Button>
-            <Button
-              variant="ghost"
-              className="rounded-full h-8 text-xs font-semibold hover:bg-muted text-foreground"
-            >
-              Groups
-            </Button>
-            <Button
-              variant="ghost"
-              className="rounded-full h-8 text-xs font-semibold hover:bg-muted text-foreground"
-            >
-              Pinned
-            </Button>
-            <Button
-              variant="ghost"
-              className="rounded-full h-8 text-xs font-semibold hover:bg-muted text-foreground"
-            >
-              Archived
-            </Button>
-          </div>
-          <ScrollBar orientation="horizontal" className="invisible" />
-        </ScrollArea>
+        <ToggleTabs items={FILTER_TABS} value={filterTab} onChange={setFilterTab} fullWidth />
       </div>
 
       {/* Chat List Items */}
       <ScrollArea className="flex-1">
-        <div className="flex flex-col px-2 pb-4">
-          {conversations.length === 0 ? (
+        <div className="flex flex-col px-2 pb-4 pt-2">
+          {filteredConversations.length === 0 ? (
             <div className="p-4 text-center text-xs text-muted-foreground">
-              Chưa có cuộc trò chuyện nào. Hãy tìm kiếm người dùng ở trên để bắt đầu nhắn tin!
+              No conversation yet. Search users to start messages
             </div>
           ) : (
-            conversations.map((conv) => {
+            filteredConversations.map((conv) => {
               const isActive = activeId === conv.id;
+              const isGroup =
+                conv.isGroup ||
+                (conv.participantIds && conv.participantIds.length > 2) ||
+                Boolean(conv.title);
               const partnerName =
-                conv.recipient?.displayName || conv.recipient?.email || conv.title || 'Người dùng';
+                conv.recipient?.displayName ||
+                conv.recipient?.email ||
+                conv.title ||
+                (isGroup ? `Nhóm (${conv.participantIds?.length || 0})` : 'Người dùng');
               const partnerAvatar = conv.recipient?.image_url || '';
               const fallbackLetter = partnerName ? partnerName[0].toUpperCase() : 'U';
               const formattedTime = formatTime(conv.lastMessageAt);
@@ -304,12 +310,16 @@ export function ChatList({ initialConversations = [], currentUserId: propUserId 
                   }`}
                 >
                   <div className="relative shrink-0">
-                    <Avatar className="h-12 w-12">
-                      {partnerAvatar ? (
-                        <AvatarImage src={partnerAvatar} alt={partnerName} />
-                      ) : null}
-                      <AvatarFallback>{fallbackLetter}</AvatarFallback>
-                    </Avatar>
+                    {isGroup ? (
+                      <div className="h-12 w-12 rounded-2xl bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold shrink-0">
+                        <Users className="size-6" />
+                      </div>
+                    ) : (
+                      <Avatar className="h-12 w-12">
+                        {partnerAvatar ? <AvatarImage src={partnerAvatar} alt={partnerName} /> : null}
+                        <AvatarFallback>{fallbackLetter}</AvatarFallback>
+                      </Avatar>
+                    )}
                   </div>
 
                   <div className="flex-1 overflow-hidden">
@@ -346,6 +356,13 @@ export function ChatList({ initialConversations = [], currentUserId: propUserId 
           )}
         </div>
       </ScrollArea>
+
+      <CreateGroupDialog
+        open={isGroupDialogOpen}
+        onOpenChange={setIsGroupDialogOpen}
+        userOptions={userOptions}
+        onGroupCreated={refreshConversations}
+      />
     </div>
   );
 }

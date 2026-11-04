@@ -80,12 +80,6 @@ export const login = async (input: LoginInput): Promise<AuthTokens> => {
     throw new HttpError(401, 'Invalid credentials');
   }
 
-  if (!credential) {
-    // 2. Log cảnh báo (warn) nếu không tìm thấy email trong DB
-    logger.warn({ email: input.email }, 'Đăng nhập thất bại: Không tìm thấy email');
-    throw new HttpError(401, 'Invalid credentials');
-  }
-
   const valid = await verifyPassword(input.password, credential.passwordHash);
   if (!valid) {
     // 3. Log cảnh báo nếu sai mật khẩu
@@ -112,7 +106,7 @@ export const login = async (input: LoginInput): Promise<AuthTokens> => {
     accessToken,
     refreshToken,
   };
-};;
+};
 
 export const refreshTokens = async (token: string): Promise<AuthTokens> => {
   const payload = verifyRefreshToken(token);
@@ -156,12 +150,31 @@ export const revokeRefreshToken = async (userId: string) => {
 
 export const changePassword = async (input: {
   userId: string;
+  email?: string;
+  displayName?: string;
   currentPassword?: string;
   newPassword?: string;
 }): Promise<{ success: boolean; message: string }> => {
-  const credential = await UserCredentials.findByPk(input.userId);
+  let credential = await UserCredentials.findByPk(input.userId);
+  if (!credential && input.email) {
+    credential = await UserCredentials.findOne({ where: { email: input.email } });
+  }
+
+  if (!input.newPassword) {
+    throw new HttpError(400, 'Mật khẩu mới không được để trống');
+  }
+
+  const passwordHash = await hashPassword(input.newPassword);
+
   if (!credential) {
-    throw new HttpError(404, 'Người dùng không tồn tại');
+    // If user exists in user-service but not in auth-service, create credentials
+    await UserCredentials.create({
+      id: input.userId,
+      email: input.email || '',
+      displayName: input.displayName || 'User',
+      passwordHash,
+    });
+    return { success: true, message: 'Đổi mật khẩu thành công' };
   }
 
   if (input.currentPassword) {
@@ -171,17 +184,11 @@ export const changePassword = async (input: {
     }
   }
 
-  if (!input.newPassword) {
-    throw new HttpError(400, 'Mật khẩu mới không được để trống');
-  }
-
-  const passwordHash = await hashPassword(input.newPassword);
   credential.passwordHash = passwordHash;
   await credential.save();
 
   return { success: true, message: 'Đổi mật khẩu thành công' };
 };
-
 
 const createRefreshToken = async (userId: string, transaction?: Transaction) => {
   const expiresAt = new Date();
@@ -199,4 +206,96 @@ const createRefreshToken = async (userId: string, transaction?: Transaction) => 
   );
 
   return record;
+};
+
+export interface OAuthInput {
+  email: string;
+  displayName?: string;
+  image_url?: string;
+}
+
+export const loginOrRegisterOAuth = async (input: OAuthInput): Promise<AuthResponse> => {
+  logger.info({ email: input.email }, 'OAuth Google sign in / up request');
+  let user = await UserCredentials.findOne({
+    where: { email: { [Op.eq]: input.email } },
+  });
+
+  const displayName = input.displayName || input.email.split('@')[0] || 'User';
+
+  if (!user) {
+    const transaction = await sequelize.transaction();
+    try {
+      const randomPassword = crypto.randomBytes(32).toString('hex');
+      const passwordHash = await hashPassword(randomPassword);
+      user = await UserCredentials.create(
+        {
+          email: input.email,
+          displayName,
+          passwordHash,
+        },
+        { transaction },
+      );
+
+      const refreshTokenRecord = await createRefreshToken(user.id, transaction);
+      await transaction.commit();
+
+      const accessToken = signAccessToken({
+        sub: user.id,
+        email: user.email,
+        displayName: user.displayName,
+      });
+      const refreshToken = signRefreshToken({
+        sub: user.id,
+        tokenId: refreshTokenRecord.tokenId,
+      });
+
+      const userData = {
+        id: user.id,
+        email: user.email,
+        displayName: user.displayName,
+        image_url: input.image_url,
+        role: user.email === 'admin@gmail.com' ? 'ADMIN' : 'USER',
+        createdAt: user.createdAt.toISOString(),
+      };
+
+      publishUserRegistered(userData);
+
+      return {
+        accessToken,
+        refreshToken,
+        user: userData,
+      };
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
+  }
+
+  const refreshTokenRecord = await createRefreshToken(user.id);
+  const accessToken = signAccessToken({
+    sub: user.id,
+    email: user.email,
+    displayName: user.displayName,
+  });
+  const refreshToken = signRefreshToken({
+    sub: user.id,
+    tokenId: refreshTokenRecord.tokenId,
+  });
+
+  const userData = {
+    id: user.id,
+    email: user.email,
+    displayName: user.displayName,
+    image_url: input.image_url,
+    role: user.email === 'admin@gmail.com' ? 'ADMIN' : 'USER',
+    createdAt: user.createdAt.toISOString(),
+  };
+
+  publishUserRegistered(userData);
+
+  return {
+    accessToken,
+    refreshToken,
+    user: userData,
+  };
 };

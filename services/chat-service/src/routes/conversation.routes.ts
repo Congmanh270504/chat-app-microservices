@@ -2,10 +2,12 @@ import {
   createConversationHandler,
   createMessageHandler,
   getConversationHandler,
+  getUnreadCountHandler,
   listConversationHandler,
   listMessageHandler,
   addReactionHandler,
   markConversationAsReadHandler,
+  searchMessagesHandler,
 } from '@/controllers/conversation.controller';
 import { attachAuthenticatedUser } from '@/middleware/authenticated-user';
 import {
@@ -17,6 +19,7 @@ import {
   listMessagesQuerySchema,
   addReactionBodySchema,
   messageParamsSchema,
+  searchMessagesQuerySchema,
 } from '@/validation/message.schema';
 import { conversationIdParamsSchema } from '@/validation/shared.schema';
 import { validateRequest } from '@chatapp/common';
@@ -38,6 +41,8 @@ conversationRouter.get(
   listConversationHandler,
 );
 
+conversationRouter.get('/unread-count', getUnreadCountHandler);
+
 conversationRouter.get(
   '/:id',
   validateRequest({ params: conversationIdParamsSchema }),
@@ -54,6 +59,12 @@ conversationRouter.get(
   '/:id/messages',
   validateRequest({ params: conversationIdParamsSchema, query: listMessagesQuerySchema }),
   listMessageHandler,
+);
+
+conversationRouter.get(
+  '/:id/messages/search',
+  validateRequest({ params: conversationIdParamsSchema, query: searchMessagesQuerySchema }),
+  searchMessagesHandler,
 );
 
 conversationRouter.post(

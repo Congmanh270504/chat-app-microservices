@@ -1,6 +1,12 @@
-node_modules
-dist
-.env
+**/node_modules
+**/dist
+**/.next
+**/.env
+**/.env.*
+!**/.env.example
+**/*.tsbuildinfo
 .git
 *.log
 .DS_Store
+# Frontend deploy trên Vercel, không cần đưa vào Docker build của backend
+apps

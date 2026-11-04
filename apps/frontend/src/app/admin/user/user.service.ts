@@ -120,4 +120,26 @@ export const userService = {
 
     return { success: true };
   },
+
+  resetPassword: async (
+    userId: string,
+    newPassword: string,
+    email?: string,
+    displayName?: string,
+  ): Promise<{ success: boolean; message: string }> => {
+    const headers = await getAuthHeaders();
+    const gatewayUrl = process.env.GATE_WAY_URL || 'http://127.0.0.1:4000';
+    const res = await fetch(`${gatewayUrl}/auth/reset-password`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ userId, newPassword, email, displayName }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: res.statusText }));
+      throw new Error(err.message || 'Failed to reset password');
+    }
+
+    return res.json();
+  },
 };

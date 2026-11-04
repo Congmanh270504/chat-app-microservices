@@ -8,6 +8,7 @@ import type {
 
 import { conversationCache } from '@/cache/conversation.cache';
 import { conversationRepository } from '@/repositories/conversation.repository';
+import { messageRepository } from '@/repositories/message.repository';
 import { pusherServer } from '@/lib/pusher';
 
 import { MessageStatus } from '@/types/message';
@@ -15,6 +16,26 @@ import { MessageStatus } from '@/types/message';
 export const conversationService = {
   async createConversation(input: CreateConversationInput): Promise<Conversation> {
     const conversation = await conversationRepository.create(input);
+
+    const isGroup = conversation.participantIds.length > 2 || Boolean(conversation.title);
+    if (isGroup && !conversation.lastMessageAt) {
+      try {
+        const creatorId = input.participantIds[0];
+        const eventText = input.title ? `Đã tạo nhóm "${input.title}"` : 'Đã tạo nhóm';
+        const eventMsg = await messageRepository.create(conversation.id, creatorId, eventText, true);
+        await conversationRepository.touchConversation(
+          conversation.id,
+          eventText,
+          eventMsg.status,
+          creatorId,
+        );
+        conversation.lastMessagePreview = eventText;
+        conversation.lastMessageAt = eventMsg.createdAt;
+      } catch (error) {
+        console.error('Failed to create initial group event message:', error);
+      }
+    }
+
     await conversationCache.set(conversation);
 
     try {
@@ -89,5 +110,9 @@ export const conversationService = {
     }
 
     return res;
+  },
+
+  async getUnreadCount(userId: string): Promise<number> {
+    return conversationRepository.getUnreadCount(userId);
   },
 };

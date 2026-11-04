@@ -57,6 +57,19 @@ export interface ChangePasswordPayload {
   newPassword?: string;
 }
 
+export interface ResetPasswordPayload {
+  userId: string;
+  newPassword: string;
+  email?: string;
+  displayName?: string;
+}
+
+export interface GoogleLoginPayload {
+  email: string;
+  displayName?: string;
+  image_url?: string;
+}
+
 const resolvedMessage = (status: number, data: unknown): string => {
   if (typeof data === 'object' && data && 'message' in data) {
     const message = (data as Record<string, unknown>).message;
@@ -119,6 +132,24 @@ export const authProxyService = {
   async changePassword(payload: ChangePasswordPayload): Promise<{ success: boolean; message: string }> {
     try {
       const response = await client.post<{ success: boolean; message: string }>('/auth/change-password', payload, authHeader);
+      return response.data;
+    } catch (error) {
+      return handleAxiosError(error);
+    }
+  },
+
+  async resetPassword(payload: ResetPasswordPayload): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await client.post<{ success: boolean; message: string }>('/auth/reset-password', payload, authHeader);
+      return response.data;
+    } catch (error) {
+      return handleAxiosError(error);
+    }
+  },
+
+  async googleLogin(payload: GoogleLoginPayload): Promise<AuthResponse> {
+    try {
+      const response = await client.post<AuthResponse>('/auth/google', payload, authHeader);
       return response.data;
     } catch (error) {
       return handleAxiosError(error);

@@ -4,11 +4,15 @@
 import { SettingsDialog } from '@/components/chat/settings-dialog';
 import { TypographyPopover } from '@/components/chat/typography-popover';
 import { Button } from '@/components/ui/button';
-import { LogOut, MessageSquare, Moon, Phone, Settings, Sun } from 'lucide-react';
+import { Code, LogOut, MessageSquare, Moon, Settings, Sun } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 import { useTheme } from 'next-themes';
+import { useRouter } from 'next/navigation';
 import * as React from 'react';
 import UserAvatar from '../user-avatar';
+import { getUnreadCountAction } from '@/app/chat/chat.actions';
+import { pusherClient } from '@/lib/pusher';
+import Link from 'next/link';
 
 interface ChatSidebarProps {
   user?: {
@@ -21,13 +25,59 @@ interface ChatSidebarProps {
 }
 
 export function ChatSidebar({ user }: ChatSidebarProps) {
+  const router = useRouter();
   const { setTheme, theme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
   const [openSettings, setOpenSettings] = React.useState(false);
+  const [unreadCount, setUnreadCount] = React.useState<number>(0);
 
   React.useEffect(() => {
     setMounted(true);
   }, []);
+
+  const currentUserId = user?.id;
+
+  const fetchUnreadCount = React.useCallback(async () => {
+    if (!currentUserId) return;
+    try {
+      const res = await getUnreadCountAction();
+      if (res.success && typeof res.data === 'number') {
+        setUnreadCount(res.data);
+      }
+    } catch (e) {
+      console.error('Failed to fetch unread count:', e);
+    }
+  }, [currentUserId]);
+
+  React.useEffect(() => {
+    if (!currentUserId) return;
+
+    fetchUnreadCount();
+
+    const userChannelName = `user-${currentUserId}`;
+    const channel = pusherClient.subscribe(userChannelName);
+
+    const handleUpdate = () => {
+      fetchUnreadCount();
+    };
+
+    channel.bind('conversation:new', handleUpdate);
+    channel.bind('new-message', handleUpdate);
+    channel.bind('conversation:read', handleUpdate);
+
+    const handleLocalRead = () => {
+      fetchUnreadCount();
+    };
+    window.addEventListener('chat:read', handleLocalRead);
+
+    return () => {
+      channel.unbind('conversation:new', handleUpdate);
+      channel.unbind('new-message', handleUpdate);
+      channel.unbind('conversation:read', handleUpdate);
+      pusherClient.unsubscribe(userChannelName);
+      window.removeEventListener('chat:read', handleLocalRead);
+    };
+  }, [currentUserId, fetchUnreadCount]);
 
   const currentTheme = mounted ? theme : undefined;
 
@@ -36,22 +86,19 @@ export function ChatSidebar({ user }: ChatSidebarProps) {
       <div className="w-[80px] border-r flex flex-col items-center py-4 bg-background z-20">
         {/* Top Icons */}
         <div className="flex flex-col gap-6 items-center flex-1">
-          <div className="relative cursor-pointer mt-2">
+          <div
+            className="relative cursor-pointer mt-2"
+            onClick={() => router.push('/chat')}
+            title="Messages"
+          >
             <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-2xl text-blue-600 dark:text-blue-300">
               <MessageSquare size={24} className="fill-current" />
             </div>
-            <span className="absolute -top-2 -right-2 bg-blue-600 text-white text-[10px] rounded-full h-5 w-5 flex items-center justify-center font-bold shadow-sm">
-              22
-            </span>
-          </div>
-
-          <div className="relative cursor-pointer mt-2">
-            <div className="p-2 text-muted-foreground hover:text-foreground transition-colors">
-              <Phone size={24} />
-            </div>
-            <span className="absolute top-1 right-1 bg-red-500 text-white text-[10px] rounded-full h-4 w-4 flex items-center justify-center font-bold border-2 border-background">
-              5
-            </span>
+            {unreadCount > 0 && (
+              <span className="absolute -top-2 -right-2 bg-blue-600 text-white text-[10px] rounded-full min-w-5 h-5 px-1 flex items-center justify-center font-bold shadow-sm animate-in fade-in zoom-in">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
           </div>
 
           <div className="mt-2 cursor-pointer" onClick={() => setOpenSettings(true)}>
@@ -66,7 +113,14 @@ export function ChatSidebar({ user }: ChatSidebarProps) {
 
         {/* Bottom Icons */}
         <div className="flex flex-col gap-4 items-center mb-2">
+          <Link href={'https://github.com/Congmanh270504/chat-app-microservices'} target="_blank">
+            <Button variant="ghost" size="icon" className="text-muted-foreground hover:bg-muted">
+              <Code size={24} />
+            </Button>
+          </Link>
+
           <TypographyPopover />
+
           <Button
             variant="ghost"
             size="icon"

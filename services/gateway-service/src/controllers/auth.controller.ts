@@ -2,9 +2,11 @@ import { authProxyService } from '@/services/auth-proxy.service';
 import { userProxyService } from '@/services/user-proxy.service';
 import {
   changePasswordSchema,
+  googleLoginSchema,
   loginSchema,
   refreshSchema,
   registerSchema,
+  resetPasswordSchema,
   revokeSchema,
 } from '@/validation/auth.schema';
 import { AsyncHandler } from '@chatapp/common';
@@ -75,3 +77,33 @@ export const changePassword: AsyncHandler = async (req, res, next) => {
   }
 };
 
+export const resetPassword: AsyncHandler = async (req, res, next) => {
+  try {
+    const payload = resetPasswordSchema.parse(req.body);
+    if (!payload.email) {
+      try {
+        const userRes = await userProxyService.getUserById(payload.userId);
+        if (userRes?.data) {
+          payload.email = userRes.data.email;
+          payload.displayName = userRes.data.displayName;
+        }
+      } catch (err) {
+        console.warn('Could not fetch user details for resetPassword:', err);
+      }
+    }
+    const response = await authProxyService.resetPassword(payload);
+    res.json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const googleLogin: AsyncHandler = async (req, res, next) => {
+  try {
+    const payload = googleLoginSchema.parse(req.body);
+    const response = await authProxyService.googleLogin(payload);
+    res.json(response);
+  } catch (error) {
+    next(error);
+  }
+};
