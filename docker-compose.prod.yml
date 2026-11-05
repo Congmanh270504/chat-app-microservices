@@ -88,7 +88,7 @@ services:
       PUSHER_SECRET: ${PUSHER_SECRET}
       PUSHER_CLUSTER: ${PUSHER_CLUSTER}
       MEILISEARCH_HOST: http://meilisearch:7700
-      MEILISEARCH_MASTER_KEY: ${MEILISEARCH_MASTER_KEY}
+      MEILISEARCH_MASTER_KEY: ${MEILISEARCH_MASTER_KEY:-masterKey123456}
     depends_on:
       - meilisearch
     mem_limit: 256m
@@ -99,8 +99,8 @@ services:
     image: getmeili/meilisearch:v1.12
     container_name: chatapp-meilisearch
     environment:
-      MEILI_ENV: production
-      MEILI_MASTER_KEY: ${MEILISEARCH_MASTER_KEY}
+      MEILI_ENV: ${MEILI_ENV:-development}
+      MEILI_MASTER_KEY: ${MEILISEARCH_MASTER_KEY:-masterKey123456}
       MEILI_NO_ANALYTICS: 'true'
       MEILI_MAX_INDEXING_MEMORY: 100Mb
     volumes:
