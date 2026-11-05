@@ -25,6 +25,10 @@
   <img src="https://img.shields.io/badge/Container-Docker%20%7C%20Dokploy-2496ED?style=for-the-badge&logo=docker" alt="Docker" />
 </p>
 
+<p align="center">
+  <img src="apps/frontend/public/Gemini_Generated_Image_v2detov2detov2de.png" alt="ChatApp Tech Stack & Architecture Overview" width="100%" />
+</p>
+
 ---
 
 ## 📑 Table of Contents
