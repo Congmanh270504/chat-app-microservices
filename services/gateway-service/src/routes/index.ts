@@ -3,6 +3,7 @@ import axios from 'axios';
 import { env } from '@/config/env';
 import { authRouter } from '@/routes/auth.routes';
 import { userRouter } from '@/routes/user.routes';
+import { authLimiter } from '@/middleware/rate-limiter';
 import { conversationRouter } from './conversation.routes';
 
 export const registerRoutes = (app: Router) => {
@@ -47,7 +48,8 @@ export const registerRoutes = (app: Router) => {
     });
   });
 
-  app.use('/auth', authRouter);
+  // Áp dụng giới hạn 20 lần/phút cho các route xác thực (đăng nhập, đăng ký)
+  app.use('/auth', authLimiter, authRouter);
   app.use('/conversations', conversationRouter);
   app.use('/users', userRouter);
 };
