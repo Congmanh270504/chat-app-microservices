@@ -54,7 +54,7 @@ jobs:
         id: vars
         run: |
           LOWER_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          echo "image_prefix=${LOWER_OWNER}/chatapp" >> $GITHUB_OUTPUT
+          echo "image_prefix=${LOWER_OWNER}" >> $GITHUB_OUTPUT
           SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
           echo "short_sha=sha-${SHORT}" >> $GITHUB_OUTPUT
 
