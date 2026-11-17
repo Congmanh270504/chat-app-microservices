@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: auth-service
-          image: auth-service:latest
+          image: ghcr.io/congmanh270504/auth-service:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 4003
@@ -92,7 +92,7 @@ spec:
     spec:
       containers:
         - name: user-service
-          image: user-service:latest
+          image: ghcr.io/congmanh270504/user-service:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 4001
@@ -164,7 +164,7 @@ spec:
     spec:
       containers:
         - name: chat-service
-          image: chat-service:latest
+          image: ghcr.io/congmanh270504/chat-service:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 4002

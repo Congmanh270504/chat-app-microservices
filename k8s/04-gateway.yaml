@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: gateway-service
-          image: gateway-service:latest
+          image: ghcr.io/congmanh270504/gateway-service:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 4000
