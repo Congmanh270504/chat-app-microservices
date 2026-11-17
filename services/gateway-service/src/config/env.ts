@@ -3,7 +3,9 @@ import 'dotenv/config';
 import { createEnv, z } from '@chatapp/common';
 
 const envSchema = z.object({
-  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  NODE_ENV: z
+    .enum(['development', 'production', 'test'])
+    .default('development'),
   GATEWAY_PORT: z.coerce.number().int().min(0).max(65_535).default(4000),
   USER_SERVICE_URL: z.string().url(),
   AUTH_SERVICE_URL: z.string().url(),

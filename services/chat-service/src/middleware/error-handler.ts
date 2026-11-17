@@ -15,8 +15,12 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
           ? err.status
           : 500;
 
-  const message = err?.message || (statusCode >= 500 ? 'Internal Server Error' : 'Unknown Error');
-  const payload = err?.details ? { message, details: err.details } : { message };
+  const message =
+    err?.message ||
+    (statusCode >= 500 ? 'Internal Server Error' : 'Unknown Error');
+  const payload = err?.details
+    ? { message, details: err.details }
+    : { message };
 
   res.status(statusCode).json(payload);
 

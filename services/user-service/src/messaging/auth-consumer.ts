@@ -58,7 +58,11 @@ export const startAuthEventConsumer = async () => {
 
   await ch.assertExchange(AUTH_EVENT_EXCHANGE, 'topic', { durable: true });
   const queue = await ch.assertQueue(QUEUE_NAME, { durable: true });
-  await ch.bindQueue(queue.queue, AUTH_EVENT_EXCHANGE, AUTH_USER_REGISTERED_ROUTING_KEY);
+  await ch.bindQueue(
+    queue.queue,
+    AUTH_EVENT_EXCHANGE,
+    AUTH_USER_REGISTERED_ROUTING_KEY,
+  );
 
   const consumeHandler = (msg: ConsumeMessage | null) => {
     if (!msg) {

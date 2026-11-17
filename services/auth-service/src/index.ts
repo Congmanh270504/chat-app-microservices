@@ -7,38 +7,38 @@ import { initModels } from '@/models';
 import { closePublisher, initPublisher } from '@/messaging/event-publishing';
 
 const main = async () => {
-  try {
-    await connectToDatabase();
-    await initModels();
-    await initPublisher();
+    try {
+        await connectToDatabase();
+        await initModels();
+        await initPublisher();
 
-    const app = createApp();
-    const server = createServer(app);
+        const app = createApp();
+        const server = createServer(app);
 
-    const port = env.AUTH_SERVICE_PORT;
+        const port = env.AUTH_SERVICE_PORT;
 
-    server.listen(port, () => {
-      logger.info({ port }, 'Auth service is running');
-    });
-
-    const shutdown = () => {
-      logger.info('Shutting down auth service...');
-
-      Promise.all([closeDatabase(), closePublisher()])
-        .catch((error: unknown) => {
-          logger.error({ error }, 'Error during shutdown tasks');
-        })
-        .finally(() => {
-          server.close(() => process.exit(0));
+        server.listen(port, () => {
+            logger.info({ port }, 'Auth service is running');
         });
-    };
 
-    process.on('SIGINT', shutdown);
-    process.on('SIGTERM', shutdown);
-  } catch (error) {
-    logger.error({ err: error }, 'Failed to start auth service');
-    process.exit(1);
-  }
+        const shutdown = () => {
+            logger.info('Shutting down auth service...');
+
+            Promise.all([closeDatabase(), closePublisher()])
+                .catch((error: unknown) => {
+                    logger.error({ error }, 'Error during shutdown tasks');
+                })
+                .finally(() => {
+                    server.close(() => process.exit(0));
+                });
+        };
+
+        process.on('SIGINT', shutdown);
+        process.on('SIGTERM', shutdown);
+    } catch (error) {
+        logger.error({ err: error }, 'Failed to start auth service');
+        process.exit(1);
+    }
 };
 
 void main();

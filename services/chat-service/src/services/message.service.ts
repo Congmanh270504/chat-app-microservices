@@ -10,7 +10,10 @@ import { messageRepository } from '@/repositories/message.repository';
 import { conversationService } from '@/services/conversation.service';
 import { HttpError } from '@chatapp/common';
 import { pusherServer } from '@/lib/pusher';
-import { indexMessageDoc, searchMessagesInMeili } from '@/clients/meilisearch.client';
+import {
+  indexMessageDoc,
+  searchMessagesInMeili,
+} from '@/clients/meilisearch.client';
 
 export const messageService = {
   async createMessage(
@@ -20,13 +23,19 @@ export const messageService = {
     event: boolean = false,
   ): Promise<Message> {
     // Ensure conversation exists before inserting the message
-    const conversation = await conversationService.getConversationById(conversationId);
+    const conversation =
+      await conversationService.getConversationById(conversationId);
 
     if (!conversation.participantIds.includes(senderId)) {
       throw new HttpError(403, 'Sender is not part of this conversation');
     }
 
-    const message = await messageRepository.create(conversationId, senderId, body, event);
+    const message = await messageRepository.create(
+      conversationId,
+      senderId,
+      body,
+      event,
+    );
     await conversationService.touchConversation(
       conversationId,
       body.slice(0, 120),
@@ -47,9 +56,17 @@ export const messageService = {
     });
 
     try {
-      await pusherServer.trigger(`chat-${conversationId}`, 'new-message', message);
+      await pusherServer.trigger(
+        `chat-${conversationId}`,
+        'new-message',
+        message,
+      );
       for (const participantId of conversation.participantIds) {
-        await pusherServer.trigger(`user-${participantId}`, 'new-message', message);
+        await pusherServer.trigger(
+          `user-${participantId}`,
+          'new-message',
+          message,
+        );
       }
     } catch (error) {
       console.error('Failed to trigger Pusher event:', error);
@@ -64,17 +81,22 @@ export const messageService = {
     options: MessageListOptions = {},
   ): Promise<Message[]> {
     // Ensure conversation exists; re-use conversation service for caching behavior
-    const conversation = await conversationService.getConversationById(conversationId);
+    const conversation =
+      await conversationService.getConversationById(conversationId);
 
     if (!conversation.participantIds.includes(requesterId)) {
       throw new HttpError(403, 'Requester is not part of this conversation');
     }
 
-    const messages = await messageRepository.findByConversation(conversationId, options);
+    const messages = await messageRepository.findByConversation(
+      conversationId,
+      options,
+    );
 
     // Compute status according to partner's read watermark
     const partnerReads =
-      conversation.participantReads?.filter((p) => p.userId !== requesterId) ?? [];
+      conversation.participantReads?.filter((p) => p.userId !== requesterId) ??
+      [];
     const maxPartnerReadTime = partnerReads.reduce((max, curr) => {
       const t = new Date(curr.lastReadAt).getTime();
       return t > max ? t : max;
@@ -101,7 +123,8 @@ export const messageService = {
     userReactId: string,
     emoji: string,
   ): Promise<Message> {
-    const conversation = await conversationService.getConversationById(conversationId);
+    const conversation =
+      await conversationService.getConversationById(conversationId);
 
     if (!conversation.participantIds.includes(userReactId)) {
       throw new HttpError(403, 'User is not part of this conversation');
@@ -132,10 +155,14 @@ export const messageService = {
         reactions: updatedMessage.reactions,
       });
       for (const participantId of conversation.participantIds) {
-        await pusherServer.trigger(`user-${participantId}`, 'message-reaction', {
-          messageId,
-          reactions: updatedMessage.reactions,
-        });
+        await pusherServer.trigger(
+          `user-${participantId}`,
+          'message-reaction',
+          {
+            messageId,
+            reactions: updatedMessage.reactions,
+          },
+        );
       }
     } catch (error) {
       console.error('Failed to trigger Pusher event for reaction:', error);
@@ -150,7 +177,8 @@ export const messageService = {
     query: string,
     options: { limit?: number; offset?: number } = {},
   ) {
-    const conversation = await conversationService.getConversationById(conversationId);
+    const conversation =
+      await conversationService.getConversationById(conversationId);
 
     if (!conversation.participantIds.includes(requesterId)) {
       throw new HttpError(403, 'Requester is not part of this conversation');

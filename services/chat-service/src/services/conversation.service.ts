@@ -14,14 +14,19 @@ import { pusherServer } from '@/lib/pusher';
 import { MessageStatus } from '@/types/message';
 
 export const conversationService = {
-  async createConversation(input: CreateConversationInput): Promise<Conversation> {
+  async createConversation(
+    input: CreateConversationInput,
+  ): Promise<Conversation> {
     const conversation = await conversationRepository.create(input);
 
-    const isGroup = conversation.participantIds.length > 2 || Boolean(conversation.title);
+    const isGroup =
+      conversation.participantIds.length > 2 || Boolean(conversation.title);
     if (isGroup && !conversation.lastMessageAt) {
       try {
         const creatorId = input.participantIds[0];
-        const eventText = input.title ? `Đã tạo nhóm "${input.title}"` : 'Đã tạo nhóm';
+        const eventText = input.title
+          ? `Đã tạo nhóm "${input.title}"`
+          : 'Đã tạo nhóm';
         const eventMsg = await messageRepository.create(
           conversation.id,
           creatorId,
@@ -45,7 +50,11 @@ export const conversationService = {
 
     try {
       for (const participantId of conversation.participantIds) {
-        await pusherServer.trigger(`user-${participantId}`, 'conversation:new', conversation);
+        await pusherServer.trigger(
+          `user-${participantId}`,
+          'conversation:new',
+          conversation,
+        );
       }
     } catch (error) {
       console.error('Failed to trigger conversation:new Pusher event:', error);
@@ -69,7 +78,9 @@ export const conversationService = {
     return conversation;
   },
 
-  async listConversation(filter: ConversationFilter): Promise<ConversationSummary[]> {
+  async listConversation(
+    filter: ConversationFilter,
+  ): Promise<ConversationSummary[]> {
     return conversationRepository.findSummaries(filter);
   },
 
@@ -79,7 +90,12 @@ export const conversationService = {
     status?: MessageStatus | null,
     senderId?: string,
   ): Promise<void> {
-    await conversationRepository.touchConversation(conversationId, preview, status, senderId);
+    await conversationRepository.touchConversation(
+      conversationId,
+      preview,
+      status,
+      senderId,
+    );
     await conversationCache.delete(conversationId);
   },
 
@@ -88,7 +104,11 @@ export const conversationService = {
     userId: string,
     messageId?: string,
   ): Promise<{ conversation: Conversation; lastReadAt: Date }> {
-    const res = await conversationRepository.markAsRead(conversationId, userId, messageId);
+    const res = await conversationRepository.markAsRead(
+      conversationId,
+      userId,
+      messageId,
+    );
     if (!res) {
       throw new HttpError(404, 'Conversation not found');
     }
@@ -96,19 +116,27 @@ export const conversationService = {
     await conversationCache.delete(conversationId);
 
     try {
-      await pusherServer.trigger(`chat-${conversationId}`, 'conversation:read', {
-        conversationId,
-        readerId: userId,
-        lastReadAt: res.lastReadAt,
-      });
-
-      for (const participantId of res.conversation.participantIds) {
-        await pusherServer.trigger(`user-${participantId}`, 'conversation:read', {
+      await pusherServer.trigger(
+        `chat-${conversationId}`,
+        'conversation:read',
+        {
           conversationId,
           readerId: userId,
           lastReadAt: res.lastReadAt,
-          lastMessageStatus: res.conversation.lastMessageStatus,
-        });
+        },
+      );
+
+      for (const participantId of res.conversation.participantIds) {
+        await pusherServer.trigger(
+          `user-${participantId}`,
+          'conversation:read',
+          {
+            conversationId,
+            readerId: userId,
+            lastReadAt: res.lastReadAt,
+            lastMessageStatus: res.conversation.lastMessageStatus,
+          },
+        );
       }
     } catch (error) {
       console.error('Failed to trigger conversation:read Pusher event:', error);

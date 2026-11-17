@@ -51,7 +51,9 @@ export const editUser: AsyncHandler = async (req, res, next) => {
 export const searchUsers: AsyncHandler = async (req, res, next) => {
   try {
     const user = getAuthenticatedUser(req);
-    const parsedQuery: SearchUsersQuery = searchUsersQuerySchema.parse(req.query);
+    const parsedQuery: SearchUsersQuery = searchUsersQuerySchema.parse(
+      req.query,
+    );
     const { query, limit, exclude } = parsedQuery;
     const sanitizedExclude = Array.from(new Set([...exclude, user.id]));
 

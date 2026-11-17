@@ -37,13 +37,13 @@ function inferFileFormat({
 }) {
     if (format) return format;
 
-    const source = fileName || url || "";
-    const cleanSource = source.split("?")[0];
-    const extension = cleanSource.includes(".")
-        ? cleanSource.split(".").pop()
-        : "";
+    const source = fileName || url || '';
+    const cleanSource = source.split('?')[0];
+    const extension = cleanSource.includes('.')
+        ? cleanSource.split('.').pop()
+        : '';
 
-    return extension || "file";
+    return extension || 'file';
 }
 
 export function useFileUpload({
@@ -56,63 +56,65 @@ export function useFileUpload({
     const [error, setError] = useState<string | null>(null);
     const [progress, setProgress] = useState(0);
 
-    const upload = useCallback(async (file: File): Promise<UploadedFile | null> => {
-        setUploading(true);
-        setError(null);
-        setProgress(10);
+    const upload = useCallback(
+        async (file: File): Promise<UploadedFile | null> => {
+            setUploading(true);
+            setError(null);
+            setProgress(10);
 
-        try {
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('folder', folder);
-            formData.append('type', type);
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('folder', folder);
+                formData.append('type', type);
 
-            setProgress(30);
+                setProgress(30);
 
-            const res = await fetch('/api/upload', {
-                method: 'POST',
-                body: formData,
-            });
+                const res = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData,
+                });
 
-            setProgress(80);
+                setProgress(80);
 
-            const data = await res.json();
+                const data = await res.json();
 
-            if (!res.ok || !data.success) {
-                const msg = data.message || 'Upload thất bại';
+                if (!res.ok || !data.success) {
+                    const msg = data.message || 'Upload thất bại';
+                    setError(msg);
+                    onError?.(msg);
+                    return null;
+                }
+
+                const uploaded: UploadedFile = {
+                    url: data.url,
+                    public_id: data.public_id,
+                    format: inferFileFormat({
+                        format: data.format,
+                        fileName: data.original_filename || file.name,
+                        url: data.url,
+                    }),
+                    bytes: data.bytes ?? file.size,
+                    resource_type: data.resource_type,
+                    original_filename: data.original_filename,
+                    name: data.original_filename || file.name,
+                };
+
+                setProgress(100);
+                onSuccess?.(uploaded);
+                return uploaded;
+            } catch {
+                const msg = 'Lỗi kết nối, vui lòng thử lại';
                 setError(msg);
                 onError?.(msg);
                 return null;
+            } finally {
+                setUploading(false);
+                setTimeout(() => setProgress(0), 600);
             }
-
-            const uploaded: UploadedFile = {
-                url: data.url,
-                public_id: data.public_id,
-                format: inferFileFormat({
-                    format: data.format,
-                    fileName: data.original_filename || file.name,
-                    url: data.url,
-                }),
-                bytes: data.bytes ?? file.size,
-                resource_type: data.resource_type,
-                original_filename: data.original_filename,
-                name: data.original_filename || file.name,
-            };
-
-            setProgress(100);
-            onSuccess?.(uploaded);
-            return uploaded;
-
-        } catch {
-            const msg = 'Lỗi kết nối, vui lòng thử lại';
-            setError(msg);
-            onError?.(msg);
-            return null;
-        } finally {
-            setUploading(false);
-            setTimeout(() => setProgress(0), 600);
-        }
-    }, [folder, type, onSuccess, onError]);
+        },
+        [folder, type, onSuccess, onError],
+    );
 
     const reset = useCallback(() => {
         setError(null);
@@ -135,93 +137,103 @@ export function useMultipleFileUpload({
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const uploadMultiple = useCallback(async (items: { file: File; customName?: string }[]): Promise<UploadedFile[]> => {
-        if (!items || items.length === 0) return [];
-        setUploading(true);
-        setError(null);
+    const uploadMultiple = useCallback(
+        async (
+            items: { file: File; customName?: string }[],
+        ): Promise<UploadedFile[]> => {
+            if (!items || items.length === 0) return [];
+            setUploading(true);
+            setError(null);
 
-        try {
-            const results: UploadedFile[] = [];
-            let hasError = false;
-            let firstError: any = null;
+            try {
+                const results: UploadedFile[] = [];
+                let hasError = false;
+                let firstError: any = null;
 
-            // Xử lý đa luồng với Concurrency Limit (vd: 3 file cùng lúc)
-            // Giúp tránh nghẽn cổ chai mạng (browser giới hạn 6 request/domain)
-            // và giảm tải cho backend, đồng thời cho phép hiển thị kết quả dần dần.
-            const CONCURRENCY_LIMIT = 3;
-            const queue = [...items];
-            
-            const workers = Array(Math.min(CONCURRENCY_LIMIT, queue.length)).fill(null).map(async () => {
-                while (queue.length > 0 && !hasError) {
-                    const item = queue.shift();
-                    if (!item) break;
-                    
-                    const { file, customName } = item;
-                    const formData = new FormData();
-                    formData.append('file', file);
-                    formData.append('folder', folder);
-                    formData.append('type', type);
-                    
-                    if (customName) {
-                        formData.append('public_id', customName);
-                    }
+                // Xử lý đa luồng với Concurrency Limit (vd: 3 file cùng lúc)
+                // Giúp tránh nghẽn cổ chai mạng (browser giới hạn 6 request/domain)
+                // và giảm tải cho backend, đồng thời cho phép hiển thị kết quả dần dần.
+                const CONCURRENCY_LIMIT = 3;
+                const queue = [...items];
 
-                    try {
-                        const res = await fetch('/api/upload', {
-                            method: 'POST',
-                            body: formData,
-                        });
+                const workers = Array(Math.min(CONCURRENCY_LIMIT, queue.length))
+                    .fill(null)
+                    .map(async () => {
+                        while (queue.length > 0 && !hasError) {
+                            const item = queue.shift();
+                            if (!item) break;
 
-                        const data = await res.json();
+                            const { file, customName } = item;
+                            const formData = new FormData();
+                            formData.append('file', file);
+                            formData.append('folder', folder);
+                            formData.append('type', type);
 
-                        if (!res.ok || !data.success) {
-                            throw new Error(`[${file.name}] ${data.message || 'Upload thất bại'}`);
+                            if (customName) {
+                                formData.append('public_id', customName);
+                            }
+
+                            try {
+                                const res = await fetch('/api/upload', {
+                                    method: 'POST',
+                                    body: formData,
+                                });
+
+                                const data = await res.json();
+
+                                if (!res.ok || !data.success) {
+                                    throw new Error(
+                                        `[${file.name}] ${data.message || 'Upload thất bại'}`,
+                                    );
+                                }
+
+                                const uploadedFile = {
+                                    url: data.url,
+                                    public_id: data.public_id,
+                                    format: inferFileFormat({
+                                        format: data.format,
+                                        fileName:
+                                            data.original_filename || file.name,
+                                        url: data.url,
+                                    }),
+                                    bytes: data.bytes ?? file.size,
+                                    resource_type: data.resource_type,
+                                    original_filename: data.original_filename,
+                                    name: data.original_filename || file.name,
+                                } as UploadedFile;
+
+                                results.push(uploadedFile);
+
+                                // Callback để UI cập nhật ngay lập tức từng file
+                                if (onSuccessItem) {
+                                    onSuccessItem(uploadedFile);
+                                }
+                            } catch (err) {
+                                hasError = true;
+                                firstError = err;
+                            }
                         }
+                    });
 
-                        const uploadedFile = {
-                            url: data.url,
-                            public_id: data.public_id,
-                            format: inferFileFormat({
-                                format: data.format,
-                                fileName: data.original_filename || file.name,
-                                url: data.url,
-                            }),
-                            bytes: data.bytes ?? file.size,
-                            resource_type: data.resource_type,
-                            original_filename: data.original_filename,
-                            name: data.original_filename || file.name,
-                        } as UploadedFile;
+                await Promise.all(workers);
 
-                        results.push(uploadedFile);
-                        
-                        // Callback để UI cập nhật ngay lập tức từng file
-                        if (onSuccessItem) {
-                            onSuccessItem(uploadedFile);
-                        }
-                    } catch (err) {
-                        hasError = true;
-                        firstError = err;
-                    }
+                if (hasError && firstError) {
+                    throw firstError;
                 }
-            });
 
-            await Promise.all(workers);
-
-            if (hasError && firstError) {
-                throw firstError;
+                return results;
+            } catch (err: any) {
+                const msg =
+                    err.message || 'Lỗi kết nối, vui lòng kiểm tra lại mạng';
+                setError(msg);
+                onError?.(msg);
+                throw err; // Bắn lỗi ra ngoài để component biết mà dừng lại
+            } finally {
+                setUploading(false);
             }
-            
-            return results;
-
-        } catch (err: any) {
-            const msg = err.message || 'Lỗi kết nối, vui lòng kiểm tra lại mạng';
-            setError(msg);
-            onError?.(msg);
-            throw err; // Bắn lỗi ra ngoài để component biết mà dừng lại
-        } finally {
-            setUploading(false);
-        }
-    }, [folder, type, onError, onSuccessItem]);
+        },
+        [folder, type, onError, onSuccessItem],
+    );
 
     const reset = useCallback(() => {
         setError(null);
@@ -234,7 +246,7 @@ export function useMultipleFileUpload({
  * Format bytes thành chuỗi dễ đọc
  */
 export function formatFileSize(bytes: number): string {
-    if (!Number.isFinite(bytes)) return "";
+    if (!Number.isFinite(bytes)) return '';
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -243,11 +255,14 @@ export function formatFileSize(bytes: number): string {
 /**
  * Lấy icon name dựa trên format/extension
  */
-export function getFileTypeIcon(format?: string | null): 'pdf' | 'excel' | 'word' | 'image' | 'file' {
-    const f = (format ?? "").toLowerCase();
+export function getFileTypeIcon(
+    format?: string | null,
+): 'pdf' | 'excel' | 'word' | 'image' | 'file' {
+    const f = (format ?? '').toLowerCase();
     if (['pdf'].includes(f)) return 'pdf';
     if (['xls', 'xlsx', 'csv'].includes(f)) return 'excel';
     if (['doc', 'docx'].includes(f)) return 'word';
-    if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'].includes(f)) return 'image';
+    if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'].includes(f))
+        return 'image';
     return 'file';
 }

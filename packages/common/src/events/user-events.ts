@@ -11,4 +11,7 @@ export interface UserCreatedPayload extends EventPayload {
   updatedAt: string;
 }
 
-export type UserCreatedEvent = OutboundEvent<typeof USER_CREATED_ROUTING_KEY, UserCreatedPayload>;
+export type UserCreatedEvent = OutboundEvent<
+  typeof USER_CREATED_ROUTING_KEY,
+  UserCreatedPayload
+>;

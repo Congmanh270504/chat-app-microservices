@@ -22,9 +22,21 @@ userRoutes.get(
   validateRequest({ query: searchUsersQuerySchema }),
   asyncHandler(searchUsers),
 );
-userRoutes.get('/:id', validateRequest({ params: userIdParamsSchema }), asyncHandler(getUser));
-userRoutes.post('/', validateRequest({ body: createUserSchema }), asyncHandler(createUser));
-userRoutes.put('/:id', validateRequest({ body: createUserSchema }), asyncHandler(editUser));
+userRoutes.get(
+  '/:id',
+  validateRequest({ params: userIdParamsSchema }),
+  asyncHandler(getUser),
+);
+userRoutes.post(
+  '/',
+  validateRequest({ body: createUserSchema }),
+  asyncHandler(createUser),
+);
+userRoutes.put(
+  '/:id',
+  validateRequest({ body: createUserSchema }),
+  asyncHandler(editUser),
+);
 userRoutes.delete(
   '/:id',
   validateRequest({ params: userIdParamsSchema }),

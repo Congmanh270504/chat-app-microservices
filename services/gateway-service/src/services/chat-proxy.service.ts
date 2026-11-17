@@ -105,9 +105,13 @@ export const chatProxyService = {
     payload: CreateConversationPayload,
   ): Promise<ConversationDto> {
     try {
-      const response = await client.post<ConversationResponse>('/conversations', payload, {
-        headers: { [USER_ID_HEADER]: userId },
-      });
+      const response = await client.post<ConversationResponse>(
+        '/conversations',
+        payload,
+        {
+          headers: { [USER_ID_HEADER]: userId },
+        },
+      );
       return response.data.data;
     } catch (error) {
       return handleAxiosError(error);
@@ -116,9 +120,12 @@ export const chatProxyService = {
 
   async listConversations(userId: string): Promise<ConversationDto[]> {
     try {
-      const response = await client.get<ConversationListResponse>('/conversations', {
-        headers: { [USER_ID_HEADER]: userId },
-      });
+      const response = await client.get<ConversationListResponse>(
+        '/conversations',
+        {
+          headers: { [USER_ID_HEADER]: userId },
+        },
+      );
       return response.data.data;
     } catch (error) {
       return handleAxiosError(error);
@@ -141,9 +148,12 @@ export const chatProxyService = {
 
   async getConversation(id: string, userId: string): Promise<ConversationDto> {
     try {
-      const response = await client.get<ConversationResponse>(`/conversations/${id}`, {
-        headers: { [USER_ID_HEADER]: userId },
-      });
+      const response = await client.get<ConversationResponse>(
+        `/conversations/${id}`,
+        {
+          headers: { [USER_ID_HEADER]: userId },
+        },
+      );
       return response.data.data;
     } catch (error) {
       return handleAxiosError(error);
@@ -208,7 +218,10 @@ export const chatProxyService = {
     }
   },
 
-  async markConversationAsRead(conversationId: string, userId: string): Promise<ConversationDto> {
+  async markConversationAsRead(
+    conversationId: string,
+    userId: string,
+  ): Promise<ConversationDto> {
     try {
       const response = await client.patch<ConversationResponse>(
         `/conversations/${conversationId}/read`,

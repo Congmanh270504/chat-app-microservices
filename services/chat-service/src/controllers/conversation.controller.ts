@@ -21,103 +21,146 @@ const parsedConversation = (params: unknown) => {
   return id;
 };
 
-export const createConversationHandler: RequestHandler = asyncHandler(async (req, res) => {
-  const user = getAuthenticatedUser(req);
-  const payload = createConversationSchema.parse(req.body);
-  const uniqueParticipantIds = Array.from(new Set([...payload.participantIds, user.id]));
+export const createConversationHandler: RequestHandler = asyncHandler(
+  async (req, res) => {
+    const user = getAuthenticatedUser(req);
+    const payload = createConversationSchema.parse(req.body);
+    const uniqueParticipantIds = Array.from(
+      new Set([...payload.participantIds, user.id]),
+    );
 
-  if (uniqueParticipantIds.length < 2) {
-    throw new HttpError(400, 'Conversation must atleast include one other participant');
-  }
+    if (uniqueParticipantIds.length < 2) {
+      throw new HttpError(
+        400,
+        'Conversation must atleast include one other participant',
+      );
+    }
 
-  const conversation = await conversationService.createConversation({
-    id: payload.id,
-    title: payload.title,
-    participantIds: uniqueParticipantIds,
-  });
-  res.status(201).json({ data: conversation });
-});
+    const conversation = await conversationService.createConversation({
+      id: payload.id,
+      title: payload.title,
+      participantIds: uniqueParticipantIds,
+    });
+    res.status(201).json({ data: conversation });
+  },
+);
 
-export const listConversationHandler: RequestHandler = asyncHandler(async (req, res) => {
-  const user = getAuthenticatedUser(req);
-  const filter = listConversationsQuerySchema.parse(req.query);
-  if (filter.participantId && filter.participantId !== user.id) {
-    throw new HttpError(403, 'Unauthorized');
-  }
+export const listConversationHandler: RequestHandler = asyncHandler(
+  async (req, res) => {
+    const user = getAuthenticatedUser(req);
+    const filter = listConversationsQuerySchema.parse(req.query);
+    if (filter.participantId && filter.participantId !== user.id) {
+      throw new HttpError(403, 'Unauthorized');
+    }
 
-  const conversations = await conversationService.listConversation({ participantId: user.id });
-  res.status(201).json({ data: conversations });
-});
+    const conversations = await conversationService.listConversation({
+      participantId: user.id,
+    });
+    res.status(201).json({ data: conversations });
+  },
+);
 
-export const getUnreadCountHandler: RequestHandler = asyncHandler(async (req, res) => {
-  const user = getAuthenticatedUser(req);
-  const count = await conversationService.getUnreadCount(user.id);
-  res.status(200).json({ data: { count } });
-});
+export const getUnreadCountHandler: RequestHandler = asyncHandler(
+  async (req, res) => {
+    const user = getAuthenticatedUser(req);
+    const count = await conversationService.getUnreadCount(user.id);
+    res.status(200).json({ data: { count } });
+  },
+);
 
-export const getConversationHandler: RequestHandler = asyncHandler(async (req, res) => {
-  const user = getAuthenticatedUser(req);
-  const conversationId = parsedConversation(req.params);
-  const conversation = await conversationService.getConversationById(conversationId);
+export const getConversationHandler: RequestHandler = asyncHandler(
+  async (req, res) => {
+    const user = getAuthenticatedUser(req);
+    const conversationId = parsedConversation(req.params);
+    const conversation =
+      await conversationService.getConversationById(conversationId);
 
-  if (!conversation.participantIds.includes(user.id)) {
-    throw new HttpError(403, 'Unauthorized');
-  }
+    if (!conversation.participantIds.includes(user.id)) {
+      throw new HttpError(403, 'Unauthorized');
+    }
 
-  res.status(201).json({ data: conversation });
-});
+    res.status(201).json({ data: conversation });
+  },
+);
 
-export const createMessageHandler: RequestHandler = asyncHandler(async (req, res) => {
-  const user = getAuthenticatedUser(req);
-  const conversationId = parsedConversation(req.params);
-  const payload = createMessageBodySchema.parse(req.body);
-  const message = await messageService.createMessage(
-    conversationId,
-    user.id,
-    payload.body,
-    payload.event,
-  );
-  res.status(201).json({ data: message });
-});
+export const createMessageHandler: RequestHandler = asyncHandler(
+  async (req, res) => {
+    const user = getAuthenticatedUser(req);
+    const conversationId = parsedConversation(req.params);
+    const payload = createMessageBodySchema.parse(req.body);
+    const message = await messageService.createMessage(
+      conversationId,
+      user.id,
+      payload.body,
+      payload.event,
+    );
+    res.status(201).json({ data: message });
+  },
+);
 
-export const listMessageHandler: RequestHandler = asyncHandler(async (req, res) => {
-  const user = getAuthenticatedUser(req);
-  const conversationId = parsedConversation(req.params);
-  const query = listMessagesQuerySchema.parse(req.query);
-  const after = query.after ? new Date(query.after) : undefined;
-  const messages = await messageService.listMessages(conversationId, user.id, {
-    limit: query.limit,
-    after,
-  });
-  res.json({ data: messages });
-});
+export const listMessageHandler: RequestHandler = asyncHandler(
+  async (req, res) => {
+    const user = getAuthenticatedUser(req);
+    const conversationId = parsedConversation(req.params);
+    const query = listMessagesQuerySchema.parse(req.query);
+    const after = query.after ? new Date(query.after) : undefined;
+    const messages = await messageService.listMessages(
+      conversationId,
+      user.id,
+      {
+        limit: query.limit,
+        after,
+      },
+    );
+    res.json({ data: messages });
+  },
+);
 
-export const addReactionHandler: RequestHandler = asyncHandler(async (req, res) => {
-  const user = getAuthenticatedUser(req);
-  const { id, messageId } = messageParamsSchema.parse(req.params);
-  const payload = addReactionBodySchema.parse(req.body);
+export const addReactionHandler: RequestHandler = asyncHandler(
+  async (req, res) => {
+    const user = getAuthenticatedUser(req);
+    const { id, messageId } = messageParamsSchema.parse(req.params);
+    const payload = addReactionBodySchema.parse(req.body);
 
-  const updatedMessage = await messageService.addReaction(id, messageId, user.id, payload.emoji);
+    const updatedMessage = await messageService.addReaction(
+      id,
+      messageId,
+      user.id,
+      payload.emoji,
+    );
 
-  res.status(200).json({ data: updatedMessage });
-});
+    res.status(200).json({ data: updatedMessage });
+  },
+);
 
-export const markConversationAsReadHandler: RequestHandler = asyncHandler(async (req, res) => {
-  const user = getAuthenticatedUser(req);
-  const conversationId = parsedConversation(req.params);
-  const result = await conversationService.markConversationAsRead(conversationId, user.id);
-  res.status(200).json({ data: result.conversation });
-});
+export const markConversationAsReadHandler: RequestHandler = asyncHandler(
+  async (req, res) => {
+    const user = getAuthenticatedUser(req);
+    const conversationId = parsedConversation(req.params);
+    const result = await conversationService.markConversationAsRead(
+      conversationId,
+      user.id,
+    );
+    res.status(200).json({ data: result.conversation });
+  },
+);
 
-export const searchMessagesHandler: RequestHandler = asyncHandler(async (req, res) => {
-  const user = getAuthenticatedUser(req);
-  const conversationId = parsedConversation(req.params);
-  const query = searchMessagesQuerySchema.parse(req.query);
+export const searchMessagesHandler: RequestHandler = asyncHandler(
+  async (req, res) => {
+    const user = getAuthenticatedUser(req);
+    const conversationId = parsedConversation(req.params);
+    const query = searchMessagesQuerySchema.parse(req.query);
 
-  const searchResults = await messageService.searchMessages(conversationId, user.id, query.q, {
-    limit: query.limit,
-    offset: query.offset,
-  });
+    const searchResults = await messageService.searchMessages(
+      conversationId,
+      user.id,
+      query.q,
+      {
+        limit: query.limit,
+        offset: query.offset,
+      },
+    );
 
-  res.status(200).json({ data: searchResults });
-});
+    res.status(200).json({ data: searchResults });
+  },
+);

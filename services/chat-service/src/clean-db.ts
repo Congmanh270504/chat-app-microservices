@@ -29,7 +29,9 @@ async function clearChatData() {
     collections.map((c) => c.collectionName),
   );
 
-  const conversationsResult = await db.collection('conversations').deleteMany({});
+  const conversationsResult = await db
+    .collection('conversations')
+    .deleteMany({});
   console.log(`Deleted ${conversationsResult.deletedCount} conversations.`);
 
   const messagesResult = await db.collection('messages').deleteMany({});

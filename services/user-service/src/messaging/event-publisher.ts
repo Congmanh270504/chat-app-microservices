@@ -1,4 +1,7 @@
-import { USER_CREATED_ROUTING_KEY, USER_EVENTS_EXCHANGE } from '@chatapp/common';
+import {
+  USER_CREATED_ROUTING_KEY,
+  USER_EVENTS_EXCHANGE,
+} from '@chatapp/common';
 import amqplib from 'amqplib';
 
 import type { UserCreatedEvent, UserCreatedPayload } from '@chatapp/common';
@@ -7,7 +10,8 @@ import type { Channel, ChannelModel, Connection } from 'amqplib';
 import { env } from '@/config/env';
 import { logger } from '@/utils/logger';
 
-type ManagedConnection = Connection & Pick<ChannelModel, 'close' | 'createChannel'>;
+type ManagedConnection = Connection &
+  Pick<ChannelModel, 'close' | 'createChannel'>;
 
 let connection: ManagedConnection | null = null;
 let channel: Channel | null = null;
@@ -27,7 +31,9 @@ const ensureChannel = async (): Promise<Channel | null> => {
     return null;
   }
 
-  const amqpConnection = (await amqplib.connect(env.RABBITMQ_URL)) as unknown as ManagedConnection;
+  const amqpConnection = (await amqplib.connect(
+    env.RABBITMQ_URL,
+  )) as unknown as ManagedConnection;
   connection = amqpConnection;
   amqpConnection.on('close', () => {
     logger.warn('RabbitMQ connection closed');
@@ -40,7 +46,9 @@ const ensureChannel = async (): Promise<Channel | null> => {
 
   const amqpChannel = await amqpConnection.createChannel();
   channel = amqpChannel;
-  await amqpChannel.assertExchange(USER_EVENTS_EXCHANGE, 'topic', { durable: true });
+  await amqpChannel.assertExchange(USER_EVENTS_EXCHANGE, 'topic', {
+    durable: true,
+  });
 
   return amqpChannel;
 };
@@ -78,7 +86,10 @@ export const publishUserCreatedEvent = async (payload: UserCreatedPayload) => {
   const ch = await ensureChannel();
 
   if (!ch) {
-    logger.debug({ payload }, 'Skipping user.created event publish; messaging disabled');
+    logger.debug(
+      { payload },
+      'Skipping user.created event publish; messaging disabled',
+    );
     return;
   }
 

@@ -51,19 +51,28 @@ conversationRouter.get(
 
 conversationRouter.post(
   '/:id/messages',
-  validateRequest({ params: conversationIdParamsSchema, body: createMessageBodySchema }),
+  validateRequest({
+    params: conversationIdParamsSchema,
+    body: createMessageBodySchema,
+  }),
   createMessageHandler,
 );
 
 conversationRouter.get(
   '/:id/messages',
-  validateRequest({ params: conversationIdParamsSchema, query: listMessagesQuerySchema }),
+  validateRequest({
+    params: conversationIdParamsSchema,
+    query: listMessagesQuerySchema,
+  }),
   listMessagesHandler,
 );
 
 conversationRouter.get(
   '/:id/messages/search',
-  validateRequest({ params: conversationIdParamsSchema, query: searchMessagesQuerySchema }),
+  validateRequest({
+    params: conversationIdParamsSchema,
+    query: searchMessagesQuerySchema,
+  }),
   searchMessagesHandler,
 );
 

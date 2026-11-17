@@ -30,7 +30,12 @@ export const registerRoutes = (app: Router) => {
 
     try {
       const redis = getRedisClient();
-      await redis.set('db_ping:last_ping', new Date().toISOString(), 'EX', 86400 * 30);
+      await redis.set(
+        'db_ping:last_ping',
+        new Date().toISOString(),
+        'EX',
+        86400 * 30,
+      );
       results.redis = 'ok';
     } catch (err: any) {
       results.redis = `error: ${err.message}`;

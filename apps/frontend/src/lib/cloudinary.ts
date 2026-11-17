@@ -27,7 +27,7 @@ function configureCloudinary() {
  */
 export async function uploadToCloudinary(
     file: string | Buffer,
-    options: UploadOptions = {}
+    options: UploadOptions = {},
 ) {
     // Cấu hình tại thời điểm gọi - đảm bảo env vars đã load
     configureCloudinary();
@@ -41,14 +41,22 @@ export async function uploadToCloudinary(
     } = options;
 
     const cfg = cloudinary.config();
-    console.log('[Cloudinary] Uploading with cloud_name:', cfg.cloud_name, '| api_key:', cfg.api_key);
+    console.log(
+        '[Cloudinary] Uploading with cloud_name:',
+        cfg.cloud_name,
+        '| api_key:',
+        cfg.api_key,
+    );
 
     const uploadOptions: any = {
         folder,
         overwrite: true,
         resource_type: resourceType,
         ...(public_id && { public_id }),
-        ...(originalName && { original_filename: originalName, use_filename: false }),
+        ...(originalName && {
+            original_filename: originalName,
+            use_filename: false,
+        }),
         ...(transformation && { transformation }),
     };
 
@@ -57,14 +65,17 @@ export async function uploadToCloudinary(
     }
 
     return new Promise<any>((resolve, reject) => {
-        const stream = cloudinary.uploader.upload_stream(uploadOptions, (error, result) => {
-            if (error) {
-                console.error('[Cloudinary] Upload error:', error);
-                reject(error);
-            } else {
-                resolve(result);
-            }
-        });
+        const stream = cloudinary.uploader.upload_stream(
+            uploadOptions,
+            (error, result) => {
+                if (error) {
+                    console.error('[Cloudinary] Upload error:', error);
+                    reject(error);
+                } else {
+                    resolve(result);
+                }
+            },
+        );
         stream.end(file);
     });
 }
@@ -74,8 +85,10 @@ export async function uploadToCloudinary(
  */
 export async function deleteFromCloudinary(
     publicId: string,
-    resourceType: 'image' | 'raw' | 'video' = 'image'
+    resourceType: 'image' | 'raw' | 'video' = 'image',
 ) {
     configureCloudinary();
-    return cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
+    return cloudinary.uploader.destroy(publicId, {
+        resource_type: resourceType,
+    });
 }

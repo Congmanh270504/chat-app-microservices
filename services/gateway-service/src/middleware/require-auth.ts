@@ -42,7 +42,10 @@ export const requireAuth: RequestHandler = (req, _res, next) => {
     req.user = toAuthenticatedUser(claims);
     next();
   } catch (error: any) {
-    console.error('[requireAuth] Authentication failed:', error?.message || error);
+    console.error(
+      '[requireAuth] Authentication failed:',
+      error?.message || error,
+    );
     if (error instanceof HttpError) {
       next(error);
       return;

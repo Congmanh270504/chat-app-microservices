@@ -77,7 +77,10 @@ const handleAxiosError = (error: unknown): never => {
 export const userProxyService = {
   async getUserById(id: string): Promise<UserResponse> {
     try {
-      const response = await client.get<UserResponse>(`/users/${id}`, authHeader);
+      const response = await client.get<UserResponse>(
+        `/users/${id}`,
+        authHeader,
+      );
       return response.data;
     } catch (error) {
       return handleAxiosError(error);
@@ -95,16 +98,27 @@ export const userProxyService = {
 
   async createUser(payload: CreateUserPayload): Promise<UserResponse> {
     try {
-      const response = await client.post<UserResponse>(`/users`, payload, authHeader);
+      const response = await client.post<UserResponse>(
+        `/users`,
+        payload,
+        authHeader,
+      );
       return response.data;
     } catch (error) {
       return handleAxiosError(error);
     }
   },
 
-  async editUser(id: string, payload: CreateUserPayload): Promise<UserResponse> {
+  async editUser(
+    id: string,
+    payload: CreateUserPayload,
+  ): Promise<UserResponse> {
     try {
-      const response = await client.put<UserResponse>(`/users/${id}`, payload, authHeader);
+      const response = await client.put<UserResponse>(
+        `/users/${id}`,
+        payload,
+        authHeader,
+      );
       return response.data;
     } catch (error) {
       return handleAxiosError(error);
@@ -118,7 +132,9 @@ export const userProxyService = {
         params: {
           query: params.query,
           ...(params.limit ? { limit: params.limit } : {}),
-          ...(params.exclude && params.exclude.length > 0 ? { exclude: params.exclude } : {}),
+          ...(params.exclude && params.exclude.length > 0
+            ? { exclude: params.exclude }
+            : {}),
         },
       });
 

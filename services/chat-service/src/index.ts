@@ -17,7 +17,12 @@ import { setupMeilisearch } from '@/clients/meilisearch.client';
 
 const main = async () => {
   try {
-    await Promise.all([getMongoClient(), connectRedis(), startConsumers(), setupMeilisearch()]);
+    await Promise.all([
+      getMongoClient(),
+      connectRedis(),
+      startConsumers(),
+      setupMeilisearch(),
+    ]);
 
     const app = createApp();
     const server = createServer(app);

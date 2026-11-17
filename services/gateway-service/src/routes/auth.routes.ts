@@ -24,10 +24,26 @@ import { Router } from 'express';
 
 export const authRouter: Router = Router();
 
-authRouter.post('/register', validateRequest({ body: registerSchema }), asyncHandler(registerUser));
-authRouter.post('/login', validateRequest({ body: loginSchema }), asyncHandler(loginUser));
-authRouter.post('/refresh', validateRequest({ body: refreshSchema }), asyncHandler(refreshTokens));
-authRouter.post('/revoke', validateRequest({ body: revokeSchema }), asyncHandler(revokeTokens));
+authRouter.post(
+  '/register',
+  validateRequest({ body: registerSchema }),
+  asyncHandler(registerUser),
+);
+authRouter.post(
+  '/login',
+  validateRequest({ body: loginSchema }),
+  asyncHandler(loginUser),
+);
+authRouter.post(
+  '/refresh',
+  validateRequest({ body: refreshSchema }),
+  asyncHandler(refreshTokens),
+);
+authRouter.post(
+  '/revoke',
+  validateRequest({ body: revokeSchema }),
+  asyncHandler(revokeTokens),
+);
 authRouter.post(
   '/change-password',
   validateRequest({ body: changePasswordSchema }),
@@ -40,4 +56,8 @@ authRouter.post(
   validateRequest({ body: resetPasswordSchema }),
   asyncHandler(resetPassword),
 );
-authRouter.post('/google', validateRequest({ body: googleLoginSchema }), asyncHandler(googleLogin));
+authRouter.post(
+  '/google',
+  validateRequest({ body: googleLoginSchema }),
+  asyncHandler(googleLogin),
+);

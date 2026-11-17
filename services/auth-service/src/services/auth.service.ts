@@ -1,12 +1,17 @@
 import { sequelize } from '@/db/sequelize';
 import { RefreshToken, UserCredentials } from '@/models';
-import { AuthResponse, AuthTokens, LoginInput, RegisterInput } from '@/types/auth';
 import {
-  hashPassword,
-  signAccessToken,
-  signRefreshToken,
-  verifyPassword,
-  verifyRefreshToken,
+    AuthResponse,
+    AuthTokens,
+    LoginInput,
+    RegisterInput,
+} from '@/types/auth';
+import {
+    hashPassword,
+    signAccessToken,
+    signRefreshToken,
+    verifyPassword,
+    verifyRefreshToken,
 } from '@/utils/token';
 import { HttpError } from '@chatapp/common';
 import { Op, Transaction } from 'sequelize';
@@ -17,285 +22,310 @@ import { logger } from '@/utils/logger';
 const REFRESH_TOKEN_TTL_DAYS = 30;
 
 export const register = async (input: RegisterInput): Promise<AuthResponse> => {
-  const existing = await UserCredentials.findOne({
-    where: { email: { [Op.eq]: input.email } },
-  });
-
-  if (existing) {
-    throw new HttpError(409, 'User with this email already exists');
-  }
-
-  const transaction = await sequelize.transaction();
-  try {
-    const passwordHash = await hashPassword(input.password);
-    const user = await UserCredentials.create(
-      {
-        email: input.email,
-        displayName: input.displayName,
-        passwordHash,
-      },
-      { transaction },
-    );
-
-    const refreshTokenRecord = await createRefreshToken(user.id, transaction);
-
-    await transaction.commit();
-
-    const accessToken = signAccessToken({
-      sub: user.id,
-      email: user.email,
-      displayName: user.displayName,
-    });
-    const refreshToken = signRefreshToken({
-      sub: user.id,
-      tokenId: refreshTokenRecord.tokenId,
+    const existing = await UserCredentials.findOne({
+        where: { email: { [Op.eq]: input.email } },
     });
 
-    const userData = {
-      id: user.id,
-      email: user.email,
-      displayName: user.displayName,
-      role: 'USER',
-      createdAt: user.createdAt.toISOString(),
-    };
+    if (existing) {
+        throw new HttpError(409, 'User with this email already exists');
+    }
 
-    publishUserRegistered(userData);
+    const transaction = await sequelize.transaction();
+    try {
+        const passwordHash = await hashPassword(input.password);
+        const user = await UserCredentials.create(
+            {
+                email: input.email,
+                displayName: input.displayName,
+                passwordHash,
+            },
+            { transaction },
+        );
 
-    return {
-      accessToken,
-      refreshToken,
-      user: userData,
-    };
-  } catch (error) {
-    await transaction.rollback();
-    throw error;
-  }
+        const refreshTokenRecord = await createRefreshToken(
+            user.id,
+            transaction,
+        );
+
+        await transaction.commit();
+
+        const accessToken = signAccessToken({
+            sub: user.id,
+            email: user.email,
+            displayName: user.displayName,
+        });
+        const refreshToken = signRefreshToken({
+            sub: user.id,
+            tokenId: refreshTokenRecord.tokenId,
+        });
+
+        const userData = {
+            id: user.id,
+            email: user.email,
+            displayName: user.displayName,
+            role: 'USER',
+            createdAt: user.createdAt.toISOString(),
+        };
+
+        publishUserRegistered(userData);
+
+        return {
+            accessToken,
+            refreshToken,
+            user: userData,
+        };
+    } catch (error) {
+        await transaction.rollback();
+        throw error;
+    }
 };
 
 export const login = async (input: LoginInput): Promise<AuthTokens> => {
-  // 1. Log ra thông báo có người đang thử đăng nhập
-  logger.info({ email: input.email }, 'Bắt đầu xử lý đăng nhập cho user');
-  const credential = await UserCredentials.findOne({ where: { email: { [Op.eq]: input.email } } });
-  if (!credential) {
-    throw new HttpError(401, 'Invalid credentials');
-  }
+    // 1. Log ra thông báo có người đang thử đăng nhập
+    logger.info({ email: input.email }, 'Bắt đầu xử lý đăng nhập cho user');
+    const credential = await UserCredentials.findOne({
+        where: { email: { [Op.eq]: input.email } },
+    });
+    if (!credential) {
+        throw new HttpError(401, 'Invalid credentials');
+    }
 
-  const valid = await verifyPassword(input.password, credential.passwordHash);
-  if (!valid) {
-    // 3. Log cảnh báo nếu sai mật khẩu
-    logger.warn({ email: input.email }, 'Đăng nhập thất bại: Sai mật khẩu');
-    throw new HttpError(401, 'Invalid credentials');
-  }
+    const valid = await verifyPassword(input.password, credential.passwordHash);
+    if (!valid) {
+        // 3. Log cảnh báo nếu sai mật khẩu
+        logger.warn({ email: input.email }, 'Đăng nhập thất bại: Sai mật khẩu');
+        throw new HttpError(401, 'Invalid credentials');
+    }
 
-  const refreshTokenRecord = await createRefreshToken(credential.id);
+    const refreshTokenRecord = await createRefreshToken(credential.id);
 
-  const accessToken = signAccessToken({
-    sub: credential.id,
-    email: credential.email,
-    displayName: credential.displayName,
-  });
-  const refreshToken = signRefreshToken({
-    sub: credential.id,
-    tokenId: refreshTokenRecord.tokenId,
-  });
+    const accessToken = signAccessToken({
+        sub: credential.id,
+        email: credential.email,
+        displayName: credential.displayName,
+    });
+    const refreshToken = signRefreshToken({
+        sub: credential.id,
+        tokenId: refreshTokenRecord.tokenId,
+    });
 
-  // 4. Log thông báo (info) khi mọi thứ thành công rực rỡ
-  logger.info({ userId: credential.id, email: credential.email }, 'Đăng nhập THÀNH CÔNG');
+    // 4. Log thông báo (info) khi mọi thứ thành công rực rỡ
+    logger.info(
+        { userId: credential.id, email: credential.email },
+        'Đăng nhập THÀNH CÔNG',
+    );
 
-  return {
-    accessToken,
-    refreshToken,
-  };
+    return {
+        accessToken,
+        refreshToken,
+    };
 };
 
 export const refreshTokens = async (token: string): Promise<AuthTokens> => {
-  const payload = verifyRefreshToken(token);
+    const payload = verifyRefreshToken(token);
 
-  const tokenRecord = await RefreshToken.findOne({
-    where: { tokenId: payload.tokenId, userId: payload.sub },
-  });
+    const tokenRecord = await RefreshToken.findOne({
+        where: { tokenId: payload.tokenId, userId: payload.sub },
+    });
 
-  if (!tokenRecord) {
-    throw new HttpError(401, 'Invalid refresh token');
-  }
+    if (!tokenRecord) {
+        throw new HttpError(401, 'Invalid refresh token');
+    }
 
-  if (tokenRecord.expiresAt.getTime() < Date.now()) {
+    if (tokenRecord.expiresAt.getTime() < Date.now()) {
+        await tokenRecord.destroy();
+        throw new HttpError(401, 'Refresh token has expired');
+    }
+
+    const credential = await UserCredentials.findByPk(payload.sub);
+
+    if (!credential) {
+        logger.warn({ userId: payload.sub }, 'User missing for refresh token');
+        throw new HttpError(401, 'Invalid refresh token');
+    }
+
     await tokenRecord.destroy();
-    throw new HttpError(401, 'Refresh token has expired');
-  }
+    const newTokenRecord = await createRefreshToken(credential.id);
 
-  const credential = await UserCredentials.findByPk(payload.sub);
-
-  if (!credential) {
-    logger.warn({ userId: payload.sub }, 'User missing for refresh token');
-    throw new HttpError(401, 'Invalid refresh token');
-  }
-
-  await tokenRecord.destroy();
-  const newTokenRecord = await createRefreshToken(credential.id);
-
-  return {
-    accessToken: signAccessToken({
-      sub: credential.id,
-      email: credential.email,
-      displayName: credential.displayName,
-    }),
-    refreshToken: signRefreshToken({ sub: credential.id, tokenId: newTokenRecord.tokenId }),
-  };
+    return {
+        accessToken: signAccessToken({
+            sub: credential.id,
+            email: credential.email,
+            displayName: credential.displayName,
+        }),
+        refreshToken: signRefreshToken({
+            sub: credential.id,
+            tokenId: newTokenRecord.tokenId,
+        }),
+    };
 };
 
 export const revokeRefreshToken = async (userId: string) => {
-  await RefreshToken.destroy({ where: { userId } });
+    await RefreshToken.destroy({ where: { userId } });
 };
 
 export const changePassword = async (input: {
-  userId: string;
-  email?: string;
-  displayName?: string;
-  currentPassword?: string;
-  newPassword?: string;
+    userId: string;
+    email?: string;
+    displayName?: string;
+    currentPassword?: string;
+    newPassword?: string;
 }): Promise<{ success: boolean; message: string }> => {
-  let credential = await UserCredentials.findByPk(input.userId);
-  if (!credential && input.email) {
-    credential = await UserCredentials.findOne({ where: { email: input.email } });
-  }
-
-  if (!input.newPassword) {
-    throw new HttpError(400, 'Mật khẩu mới không được để trống');
-  }
-
-  const passwordHash = await hashPassword(input.newPassword);
-
-  if (!credential) {
-    // If user exists in user-service but not in auth-service, create credentials
-    await UserCredentials.create({
-      id: input.userId,
-      email: input.email || '',
-      displayName: input.displayName || 'User',
-      passwordHash,
-    });
-    return { success: true, message: 'Đổi mật khẩu thành công' };
-  }
-
-  if (input.currentPassword) {
-    const valid = await verifyPassword(input.currentPassword, credential.passwordHash);
-    if (!valid) {
-      throw new HttpError(400, 'Mật khẩu hiện tại không chính xác');
+    let credential = await UserCredentials.findByPk(input.userId);
+    if (!credential && input.email) {
+        credential = await UserCredentials.findOne({
+            where: { email: input.email },
+        });
     }
-  }
 
-  credential.passwordHash = passwordHash;
-  await credential.save();
+    if (!input.newPassword) {
+        throw new HttpError(400, 'Mật khẩu mới không được để trống');
+    }
 
-  return { success: true, message: 'Đổi mật khẩu thành công' };
+    const passwordHash = await hashPassword(input.newPassword);
+
+    if (!credential) {
+        // If user exists in user-service but not in auth-service, create credentials
+        await UserCredentials.create({
+            id: input.userId,
+            email: input.email || '',
+            displayName: input.displayName || 'User',
+            passwordHash,
+        });
+        return { success: true, message: 'Đổi mật khẩu thành công' };
+    }
+
+    if (input.currentPassword) {
+        const valid = await verifyPassword(
+            input.currentPassword,
+            credential.passwordHash,
+        );
+        if (!valid) {
+            throw new HttpError(400, 'Mật khẩu hiện tại không chính xác');
+        }
+    }
+
+    credential.passwordHash = passwordHash;
+    await credential.save();
+
+    return { success: true, message: 'Đổi mật khẩu thành công' };
 };
 
-const createRefreshToken = async (userId: string, transaction?: Transaction) => {
-  const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + REFRESH_TOKEN_TTL_DAYS); // 30 days from now
+const createRefreshToken = async (
+    userId: string,
+    transaction?: Transaction,
+) => {
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + REFRESH_TOKEN_TTL_DAYS); // 30 days from now
 
-  const tokenId = crypto.randomUUID();
+    const tokenId = crypto.randomUUID();
 
-  const record = await RefreshToken.create(
-    {
-      userId,
-      tokenId,
-      expiresAt,
-    },
-    { transaction },
-  );
+    const record = await RefreshToken.create(
+        {
+            userId,
+            tokenId,
+            expiresAt,
+        },
+        { transaction },
+    );
 
-  return record;
+    return record;
 };
 
 export interface OAuthInput {
-  email: string;
-  displayName?: string;
-  image_url?: string;
+    email: string;
+    displayName?: string;
+    image_url?: string;
 }
 
-export const loginOrRegisterOAuth = async (input: OAuthInput): Promise<AuthResponse> => {
-  logger.info({ email: input.email }, 'OAuth Google sign in / up request');
-  let user = await UserCredentials.findOne({
-    where: { email: { [Op.eq]: input.email } },
-  });
+export const loginOrRegisterOAuth = async (
+    input: OAuthInput,
+): Promise<AuthResponse> => {
+    logger.info({ email: input.email }, 'OAuth Google sign in / up request');
+    let user = await UserCredentials.findOne({
+        where: { email: { [Op.eq]: input.email } },
+    });
 
-  const displayName = input.displayName || input.email.split('@')[0] || 'User';
+    const displayName =
+        input.displayName || input.email.split('@')[0] || 'User';
 
-  if (!user) {
-    const transaction = await sequelize.transaction();
-    try {
-      const randomPassword = crypto.randomBytes(32).toString('hex');
-      const passwordHash = await hashPassword(randomPassword);
-      user = await UserCredentials.create(
-        {
-          email: input.email,
-          displayName,
-          passwordHash,
-        },
-        { transaction },
-      );
+    if (!user) {
+        const transaction = await sequelize.transaction();
+        try {
+            const randomPassword = crypto.randomBytes(32).toString('hex');
+            const passwordHash = await hashPassword(randomPassword);
+            user = await UserCredentials.create(
+                {
+                    email: input.email,
+                    displayName,
+                    passwordHash,
+                },
+                { transaction },
+            );
 
-      const refreshTokenRecord = await createRefreshToken(user.id, transaction);
-      await transaction.commit();
+            const refreshTokenRecord = await createRefreshToken(
+                user.id,
+                transaction,
+            );
+            await transaction.commit();
 
-      const accessToken = signAccessToken({
+            const accessToken = signAccessToken({
+                sub: user.id,
+                email: user.email,
+                displayName: user.displayName,
+            });
+            const refreshToken = signRefreshToken({
+                sub: user.id,
+                tokenId: refreshTokenRecord.tokenId,
+            });
+
+            const userData = {
+                id: user.id,
+                email: user.email,
+                displayName: user.displayName,
+                image_url: input.image_url,
+                role: user.email === 'admin@gmail.com' ? 'ADMIN' : 'USER',
+                createdAt: user.createdAt.toISOString(),
+            };
+
+            publishUserRegistered(userData);
+
+            return {
+                accessToken,
+                refreshToken,
+                user: userData,
+            };
+        } catch (error) {
+            await transaction.rollback();
+            throw error;
+        }
+    }
+
+    const refreshTokenRecord = await createRefreshToken(user.id);
+    const accessToken = signAccessToken({
         sub: user.id,
         email: user.email,
         displayName: user.displayName,
-      });
-      const refreshToken = signRefreshToken({
+    });
+    const refreshToken = signRefreshToken({
         sub: user.id,
         tokenId: refreshTokenRecord.tokenId,
-      });
+    });
 
-      const userData = {
+    const userData = {
         id: user.id,
         email: user.email,
         displayName: user.displayName,
         image_url: input.image_url,
         role: user.email === 'admin@gmail.com' ? 'ADMIN' : 'USER',
         createdAt: user.createdAt.toISOString(),
-      };
+    };
 
-      publishUserRegistered(userData);
+    publishUserRegistered(userData);
 
-      return {
+    return {
         accessToken,
         refreshToken,
         user: userData,
-      };
-    } catch (error) {
-      await transaction.rollback();
-      throw error;
-    }
-  }
-
-  const refreshTokenRecord = await createRefreshToken(user.id);
-  const accessToken = signAccessToken({
-    sub: user.id,
-    email: user.email,
-    displayName: user.displayName,
-  });
-  const refreshToken = signRefreshToken({
-    sub: user.id,
-    tokenId: refreshTokenRecord.tokenId,
-  });
-
-  const userData = {
-    id: user.id,
-    email: user.email,
-    displayName: user.displayName,
-    image_url: input.image_url,
-    role: user.email === 'admin@gmail.com' ? 'ADMIN' : 'USER',
-    createdAt: user.createdAt.toISOString(),
-  };
-
-  publishUserRegistered(userData);
-
-  return {
-    accessToken,
-    refreshToken,
-    user: userData,
-  };
+    };
 };

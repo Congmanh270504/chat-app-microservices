@@ -96,7 +96,11 @@ const handleAxiosError = (error: unknown): never => {
 export const authProxyService = {
   async register(payload: RegisterPayload): Promise<AuthResponse> {
     try {
-      const response = await client.post<AuthResponse>('/auth/register', payload, authHeader);
+      const response = await client.post<AuthResponse>(
+        '/auth/register',
+        payload,
+        authHeader,
+      );
       return response.data;
     } catch (error) {
       return handleAxiosError(error);
@@ -105,7 +109,11 @@ export const authProxyService = {
 
   async login(payload: LoginPayload): Promise<AuthTokens> {
     try {
-      const response = await client.post<AuthTokens>('/auth/login', payload, authHeader);
+      const response = await client.post<AuthTokens>(
+        '/auth/login',
+        payload,
+        authHeader,
+      );
       return response.data;
     } catch (error) {
       return handleAxiosError(error);
@@ -114,7 +122,11 @@ export const authProxyService = {
 
   async refresh(payload: RefreshPayload): Promise<AuthTokens> {
     try {
-      const response = await client.post<AuthTokens>('/auth/refresh', payload, authHeader);
+      const response = await client.post<AuthTokens>(
+        '/auth/refresh',
+        payload,
+        authHeader,
+      );
       return response.data;
     } catch (error) {
       return handleAxiosError(error);
@@ -161,7 +173,11 @@ export const authProxyService = {
 
   async googleLogin(payload: GoogleLoginPayload): Promise<AuthResponse> {
     try {
-      const response = await client.post<AuthResponse>('/auth/google', payload, authHeader);
+      const response = await client.post<AuthResponse>(
+        '/auth/google',
+        payload,
+        authHeader,
+      );
       return response.data;
     } catch (error) {
       return handleAxiosError(error);

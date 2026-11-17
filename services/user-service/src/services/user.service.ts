@@ -4,7 +4,10 @@ import type { CreateUserInput, User } from '@/types/user';
 import { userRepository } from '@/repositories/user.repositories';
 import { AuthUserRegisteredPayload, HttpError } from '@chatapp/common';
 import { UniqueConstraintError } from 'sequelize';
-import { publishUserCreatedEvent, publishUserDeletedEvent } from '@/messaging/event-publisher';
+import {
+  publishUserCreatedEvent,
+  publishUserDeletedEvent,
+} from '@/messaging/event-publisher';
 
 class UserService {
   constructor(private readonly repository: UserRepository) {}

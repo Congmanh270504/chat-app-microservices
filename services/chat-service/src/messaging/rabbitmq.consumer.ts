@@ -42,7 +42,11 @@ export const startConsumers = async () => {
 
   await ch.assertExchange(USER_EVENTS_EXCHANGE, 'topic', { durable: true });
   const queue = await ch.assertQueue(EVENT_QUEUE, { durable: true });
-  await ch.bindQueue(queue.queue, USER_EVENTS_EXCHANGE, USER_CREATED_ROUTING_KEY);
+  await ch.bindQueue(
+    queue.queue,
+    USER_EVENTS_EXCHANGE,
+    USER_CREATED_ROUTING_KEY,
+  );
 
   const consumeHandler = (message: ConsumeMessage | null) => {
     if (!message) {

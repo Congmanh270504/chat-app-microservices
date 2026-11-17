@@ -31,8 +31,6 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_PREFIX: ${{ github.repository_owner }}/chatapp
-  SHORT_SHA: sha-${{ github.sha }}
 
 jobs:
   # =========================================================================
@@ -46,9 +44,19 @@ jobs:
       user: ${{ steps.filter.outputs.user == 'true' || inputs.force_build_all }}
       chat: ${{ steps.filter.outputs.chat == 'true' || inputs.force_build_all }}
       gateway: ${{ steps.filter.outputs.gateway == 'true' || inputs.force_build_all }}
+      image_prefix: ${{ steps.vars.outputs.image_prefix }}
+      short_sha: ${{ steps.vars.outputs.short_sha }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Compute Lowercase Image Prefix and Short SHA
+        id: vars
+        run: |
+          LOWER_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "image_prefix=${LOWER_OWNER}/chatapp" >> $GITHUB_OUTPUT
+          SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "short_sha=sha-${SHORT}" >> $GITHUB_OUTPUT
 
       - name: Filter changed paths
         id: filter
@@ -83,6 +91,9 @@ jobs:
     name: Build & Push Images
     needs: changes
     runs-on: ubuntu-latest
+    env:
+      IMAGE_PREFIX: ${{ needs.changes.outputs.image_prefix }}
+      SHORT_SHA: ${{ needs.changes.outputs.short_sha }}
     strategy:
       fail-fast: false
       matrix:
@@ -154,6 +165,9 @@ jobs:
     name: Docker Healthcheck & Smoke Test
     needs: [changes, build-and-push]
     runs-on: ubuntu-latest
+    env:
+      IMAGE_PREFIX: ${{ needs.changes.outputs.image_prefix }}
+      SHORT_SHA: ${{ needs.changes.outputs.short_sha }}
     steps:
       - name: Log in to GitHub Container Registry (GHCR)
         uses: docker/login-action@v3
@@ -165,8 +179,9 @@ jobs:
       # Test gateway-service container
       - name: Pull and Run Gateway Service Docker Container
         run: |
-          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/gateway-service:${{ env.SHORT_SHA }} || \
-          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/gateway-service:latest
+          IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/gateway-service:${{ env.SHORT_SHA }}"
+          FALLBACK="${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/gateway-service:latest"
+          docker pull $IMAGE || docker pull $FALLBACK
 
           docker run -d --name test-gateway -p 4000:4000 \
             -e NODE_ENV=test \
@@ -176,7 +191,16 @@ jobs:
             -e CHAT_SERVICE_URL=http://localhost:4002 \
             -e JWT_SECRET=supersecretjwtkeythatisatleast32characterslong \
             -e INTERNAL_API_TOKEN=internalapitoken16chars \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/gateway-service:${{ env.SHORT_SHA }}
+            $IMAGE 2>/dev/null || \
+          docker run -d --name test-gateway -p 4000:4000 \
+            -e NODE_ENV=test \
+            -e GATEWAY_PORT=4000 \
+            -e USER_SERVICE_URL=http://localhost:4001 \
+            -e AUTH_SERVICE_URL=http://localhost:4003 \
+            -e CHAT_SERVICE_URL=http://localhost:4002 \
+            -e JWT_SECRET=supersecretjwtkeythatisatleast32characterslong \
+            -e INTERNAL_API_TOKEN=internalapitoken16chars \
+            $FALLBACK
 
       - name: Wait and Test Gateway Health Check Endpoint
         run: |
@@ -242,6 +266,8 @@ jobs:
     # Tạm pause K8s: chỉ chạy khi người dùng bật enable_k8s_deploy trong workflow_dispatch
     if: ${{ github.event.inputs.enable_k8s_deploy == 'true' }}
     env:
+      IMAGE_PREFIX: ${{ needs.changes.outputs.image_prefix }}
+      SHORT_SHA: ${{ needs.changes.outputs.short_sha }}
       KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
     environment:
       name: ${{ inputs.deploy_env || 'production' }}

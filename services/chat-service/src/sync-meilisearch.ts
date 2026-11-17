@@ -35,7 +35,11 @@ async function syncAllMessages() {
   }
 
   // Set index settings
-  await index.updateFilterableAttributes(['conversationId', 'senderId', 'createdAtTimestamp']);
+  await index.updateFilterableAttributes([
+    'conversationId',
+    'senderId',
+    'createdAtTimestamp',
+  ]);
   await index.updateSearchableAttributes(['body']);
   await index.updateSortableAttributes(['createdAtTimestamp']);
   console.log('[Sync] Index settings updated.');
@@ -81,7 +85,9 @@ async function syncAllMessages() {
   }
 
   await client.close();
-  console.log('[Sync] Complete! All messages have been indexed to Meilisearch.');
+  console.log(
+    '[Sync] Complete! All messages have been indexed to Meilisearch.',
+  );
 }
 
 syncAllMessages().catch(console.error);

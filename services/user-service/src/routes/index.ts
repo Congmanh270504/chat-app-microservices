@@ -17,9 +17,15 @@ export const registerRoutes = (app: Router) => {
       await sequelize.query(
         "INSERT INTO db_pings (id, pinged_at, note) VALUES (1, NOW(), 'keep-alive from qstash') ON CONFLICT (id) DO UPDATE SET pinged_at = NOW()",
       );
-      res.status(200).json({ status: 'ok', service: 'user-service', db: 'postgres' });
+      res
+        .status(200)
+        .json({ status: 'ok', service: 'user-service', db: 'postgres' });
     } catch (error: any) {
-      res.status(500).json({ status: 'error', service: 'user-service', message: error.message });
+      res.status(500).json({
+        status: 'error',
+        service: 'user-service',
+        message: error.message,
+      });
     }
   });
 

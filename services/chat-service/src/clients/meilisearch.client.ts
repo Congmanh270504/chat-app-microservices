@@ -30,7 +30,11 @@ export async function setupMeilisearch(): Promise<void> {
     }
 
     // Configure attributes for fast filtering & searching
-    await index.updateFilterableAttributes(['conversationId', 'senderId', 'createdAtTimestamp']);
+    await index.updateFilterableAttributes([
+      'conversationId',
+      'senderId',
+      'createdAtTimestamp',
+    ]);
 
     await index.updateSearchableAttributes(['body']);
 
@@ -45,12 +49,17 @@ export async function setupMeilisearch(): Promise<void> {
   }
 }
 
-export async function indexMessageDoc(doc: MeiliMessageDocument): Promise<void> {
+export async function indexMessageDoc(
+  doc: MeiliMessageDocument,
+): Promise<void> {
   try {
     const index = meiliClient.index(MESSAGES_INDEX);
     await index.addDocuments([doc], { primaryKey: 'id' });
   } catch (error) {
-    logger.error({ error, messageId: doc.id }, '[Meilisearch] Failed to index message');
+    logger.error(
+      { error, messageId: doc.id },
+      '[Meilisearch] Failed to index message',
+    );
   }
 }
 

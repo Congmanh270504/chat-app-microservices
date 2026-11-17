@@ -30,7 +30,11 @@ userRouter.get(
   validateRequest({ params: userIdParamsSchema }),
   asyncHandler(getUser),
 );
-userRouter.post('/', validateRequest({ body: createUserSchema }), asyncHandler(createUser));
+userRouter.post(
+  '/',
+  validateRequest({ body: createUserSchema }),
+  asyncHandler(createUser),
+);
 userRouter.put(
   '/:id',
   requireAuth,

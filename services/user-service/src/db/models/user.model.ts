@@ -5,9 +5,15 @@ import type { Optional } from 'sequelize';
 
 import { sequelize } from '@/db/sequelize';
 
-export type UserCreationAttributes = Optional<User, 'id' | 'createdAt' | 'updatedAt'>;
+export type UserCreationAttributes = Optional<
+  User,
+  'id' | 'createdAt' | 'updatedAt'
+>;
 
-export class UserModel extends Model<User, UserCreationAttributes> implements User {
+export class UserModel
+  extends Model<User, UserCreationAttributes>
+  implements User
+{
   declare id: string;
   declare email: string;
   declare displayName: string;

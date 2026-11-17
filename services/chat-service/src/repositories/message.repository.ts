@@ -2,7 +2,11 @@ import { randomUUID } from 'node:crypto';
 
 import { type WithId, type Document, ObjectId } from 'mongodb';
 
-import { MessageStatus, type Message, type MessageListOptions } from '@/types/message';
+import {
+  MessageStatus,
+  type Message,
+  type MessageListOptions,
+} from '@/types/message';
 
 import { getMongoClient } from '@/clients/mongo.client';
 
@@ -102,8 +106,11 @@ export const messageRepository = {
 
     if (!doc) return null;
 
-    const currentReactions: Array<{ userReactId?: string; userId?: string; emoji: string }> =
-      Array.isArray(doc.reactions) ? doc.reactions : [];
+    const currentReactions: Array<{
+      userReactId?: string;
+      userId?: string;
+      emoji: string;
+    }> = Array.isArray(doc.reactions) ? doc.reactions : [];
 
     const userExistingReaction = currentReactions.find(
       (r) => r.userReactId === userReactId || r.userId === userReactId,

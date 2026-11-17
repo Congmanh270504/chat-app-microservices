@@ -33,8 +33,12 @@ const getCollection = async (): Promise<Collection<ConversationDocument>> => {
   return client.db().collection<ConversationDocument>(CONVERSATIONS_COLLECTION);
 };
 
-const toConversation = (doc: ConversationDocument | WithId<Document>): Conversation => {
-  const participantIds = Array.isArray(doc.participantIds) ? (doc.participantIds as string[]) : [];
+const toConversation = (
+  doc: ConversationDocument | WithId<Document>,
+): Conversation => {
+  const participantIds = Array.isArray(doc.participantIds)
+    ? (doc.participantIds as string[])
+    : [];
   const isGroup = participantIds.length > 2 || Boolean(doc.title);
   return {
     id: String(doc._id),
@@ -43,22 +47,32 @@ const toConversation = (doc: ConversationDocument | WithId<Document>): Conversat
     isGroup,
     createdAt: new Date(doc.createdAt as string | number | Date),
     updatedAt: new Date(doc.updatedAt as string | number | Date),
-    lastMessageAt: doc.lastMessageAt ? new Date(doc.lastMessageAt as string | number | Date) : null,
-    lastMessagePreview: typeof doc.lastMessagePreview === 'string' ? doc.lastMessagePreview : null,
+    lastMessageAt: doc.lastMessageAt
+      ? new Date(doc.lastMessageAt as string | number | Date)
+      : null,
+    lastMessagePreview:
+      typeof doc.lastMessagePreview === 'string'
+        ? doc.lastMessagePreview
+        : null,
     lastMessageStatus: (doc.lastMessageStatus as MessageStatus | null) ?? null,
-    lastMessageSenderId: doc.lastMessageSenderId ? String(doc.lastMessageSenderId) : null,
+    lastMessageSenderId: doc.lastMessageSenderId
+      ? String(doc.lastMessageSenderId)
+      : null,
     participantReads: Array.isArray(doc.participantReads)
       ? doc.participantReads.map((p: any) => ({
           userId: String(p.userId),
           lastReadAt: new Date(p.lastReadAt as string | number | Date),
-          lastReadMessageId: p.lastReadMessageId ? String(p.lastReadMessageId) : null,
+          lastReadMessageId: p.lastReadMessageId
+            ? String(p.lastReadMessageId)
+            : null,
         }))
       : [],
   };
 };
 
-const toConversationSummary = (doc: ConversationDocument | WithId<Document>): ConversationSummary =>
-  toConversation(doc);
+const toConversationSummary = (
+  doc: ConversationDocument | WithId<Document>,
+): ConversationSummary => toConversation(doc);
 
 export const conversationRepository = {
   async create(input: CreateConversationInput): Promise<Conversation> {
@@ -97,10 +111,16 @@ export const conversationRepository = {
     return doc ? toConversation(doc) : null;
   },
 
-  async findSummaries(filter: ConversationFilter): Promise<ConversationSummary[]> {
+  async findSummaries(
+    filter: ConversationFilter,
+  ): Promise<ConversationSummary[]> {
     const collection = await getCollection();
-    const query = filter.participantId ? { participantIds: { $in: [filter.participantId] } } : {};
-    const cursor = collection.find(query).sort({ lastMessageAt: -1, updatedAt: -1 });
+    const query = filter.participantId
+      ? { participantIds: { $in: [filter.participantId] } }
+      : {};
+    const cursor = collection
+      .find(query)
+      .sort({ lastMessageAt: -1, updatedAt: -1 });
     const results = await cursor.toArray();
     return results.map((doc) => toConversationSummary(doc));
   },
@@ -129,7 +149,9 @@ export const conversationRepository = {
     // Update sender's read pointer to now
     if (senderId) {
       const doc = await collection.findOne({ _id: conversationId });
-      const hasSender = doc?.participantReads?.some((p) => p.userId === senderId);
+      const hasSender = doc?.participantReads?.some(
+        (p) => p.userId === senderId,
+      );
       if (hasSender) {
         await collection.updateOne(
           { _id: conversationId, 'participantReads.userId': senderId },
@@ -162,7 +184,8 @@ export const conversationRepository = {
 
     const now = new Date();
     const hasUser = doc.participantReads?.some((p) => p.userId === userId);
-    const shouldUpdateLastStatus = doc.lastMessageSenderId && doc.lastMessageSenderId !== userId;
+    const shouldUpdateLastStatus =
+      doc.lastMessageSenderId && doc.lastMessageSenderId !== userId;
 
     if (hasUser) {
       await collection.updateOne(
@@ -171,7 +194,9 @@ export const conversationRepository = {
           $set: {
             'participantReads.$.lastReadAt': now,
             'participantReads.$.lastReadMessageId': messageId ?? null,
-            ...(shouldUpdateLastStatus ? { lastMessageStatus: MessageStatus.READ } : {}),
+            ...(shouldUpdateLastStatus
+              ? { lastMessageStatus: MessageStatus.READ }
+              : {}),
           },
         },
       );
@@ -186,7 +211,9 @@ export const conversationRepository = {
               lastReadMessageId: messageId ?? null,
             },
           },
-          ...(shouldUpdateLastStatus ? { $set: { lastMessageStatus: MessageStatus.READ } } : {}),
+          ...(shouldUpdateLastStatus
+            ? { $set: { lastMessageStatus: MessageStatus.READ } }
+            : {}),
         },
       );
     }
@@ -206,8 +233,12 @@ export const conversationRepository = {
     const orConditions = conversations
       .filter((conv) => conv.id)
       .map((conv) => {
-        const userRead = conv.participantReads?.find((p) => p.userId === userId);
-        const lastReadAt = userRead?.lastReadAt ? new Date(userRead.lastReadAt) : new Date(0);
+        const userRead = conv.participantReads?.find(
+          (p) => p.userId === userId,
+        );
+        const lastReadAt = userRead?.lastReadAt
+          ? new Date(userRead.lastReadAt)
+          : new Date(0);
         return {
           conversationId: conv.id,
           senderId: { $ne: userId },
