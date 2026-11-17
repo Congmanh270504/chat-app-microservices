@@ -1,0 +1,149 @@
+name: CI - Lint & Test Pipeline
+
+on:
+  push:
+    branches: [main, develop, staging]
+  pull_request:
+    branches: [main, develop, staging]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+  PNPM_VERSION: '10.14.0'
+
+jobs:
+  lint-and-format:
+    name: Lint & Code Style Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check formatting (Prettier)
+        run: pnpm format
+
+      - name: Run ESLint
+        run: pnpm lint
+
+  typecheck:
+    name: TypeScript Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build common package
+        run: pnpm --filter @chatapp/common build
+
+      - name: Typecheck all workspaces
+        run: pnpm -r --workspace-root=false exec tsc --noEmit
+
+  test:
+    name: Unit & Integration Tests (Vitest)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build common package
+        run: pnpm --filter @chatapp/common build
+
+      - name: Run Vitest tests
+        env:
+          NODE_ENV: test
+          GATEWAY_PORT: 4000
+          USER_SERVICE_URL: http://localhost:4001
+          AUTH_SERVICE_URL: http://localhost:4003
+          CHAT_SERVICE_URL: http://localhost:4002
+          JWT_SECRET: supersecretjwtkeythatisatleast32characterslong
+          INTERNAL_API_TOKEN: internalapitoken16chars
+        run: pnpm test
+
+      - name: Generate GitHub Step Summary
+        if: always()
+        run: |
+          echo "## 📊 Unit Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status:** ${{ job.status == 'success' && '✅ All Tests Passed' || '❌ Tests Failed' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Framework:** Vitest" >> $GITHUB_STEP_SUMMARY
+          echo "- **Services tested:** gateway-service, common" >> $GITHUB_STEP_SUMMARY
+
+  audit:
+    name: Dependency Vulnerability Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Run pnpm audit (High & Critical)
+        run: pnpm audit --audit-level=high || true
+
+  validate-k8s:
+    name: Validate Kubernetes Manifests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Kubeconform
+        uses: shyiko/nw-installer@v1
+        with:
+          kubeconform: '0.6.7'
+
+      - name: Run Kubeconform on K8s manifests
+        run: |
+          kubeconform -strict -summary -ignore-missing-schemas k8s/

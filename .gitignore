@@ -50,3 +50,5 @@ temp/
 .eslintcache
 .prettiercache
 
+k8s/*
+interview.md

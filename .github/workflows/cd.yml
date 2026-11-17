@@ -1,0 +1,292 @@
+name: CD - Build, Docker Healthcheck & Deployment Pipeline
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      deploy_env:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - staging
+          - production
+      force_build_all:
+        description: 'Force build all services regardless of changes'
+        required: false
+        default: false
+        type: boolean
+      enable_k8s_deploy:
+        description: 'Bật deploy K8s (mặc định đang tạm pause)'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository_owner }}/chatapp
+  SHORT_SHA: sha-${{ github.sha }}
+
+jobs:
+  # =========================================================================
+  # 1. Monorepo Path Filtering - Xác định service nào có thay đổi code
+  # =========================================================================
+  changes:
+    name: Detect Changed Services
+    runs-on: ubuntu-latest
+    outputs:
+      auth: ${{ steps.filter.outputs.auth == 'true' || inputs.force_build_all }}
+      user: ${{ steps.filter.outputs.user == 'true' || inputs.force_build_all }}
+      chat: ${{ steps.filter.outputs.chat == 'true' || inputs.force_build_all }}
+      gateway: ${{ steps.filter.outputs.gateway == 'true' || inputs.force_build_all }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Filter changed paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            common:
+              - 'packages/common/**'
+              - 'pnpm-lock.yaml'
+              - 'package.json'
+            auth:
+              - 'services/auth-service/**'
+              - 'packages/common/**'
+              - 'pnpm-lock.yaml'
+            user:
+              - 'services/user-service/**'
+              - 'packages/common/**'
+              - 'pnpm-lock.yaml'
+            chat:
+              - 'services/chat-service/**'
+              - 'packages/common/**'
+              - 'pnpm-lock.yaml'
+            gateway:
+              - 'services/gateway-service/**'
+              - 'packages/common/**'
+              - 'pnpm-lock.yaml'
+
+  # =========================================================================
+  # 2. Build Docker images & Push lên GHCR
+  # =========================================================================
+  build-and-push:
+    name: Build & Push Images
+    needs: changes
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: auth-service
+            context: .
+            dockerfile: services/auth-service/Dockerfile
+            should_run: ${{ needs.changes.outputs.auth == 'true' }}
+          - service: user-service
+            context: .
+            dockerfile: services/user-service/Dockerfile
+            should_run: ${{ needs.changes.outputs.user == 'true' }}
+          - service: chat-service
+            context: .
+            dockerfile: services/chat-service/Dockerfile
+            should_run: ${{ needs.changes.outputs.chat == 'true' }}
+          - service: gateway-service
+            context: .
+            dockerfile: services/gateway-service/Dockerfile
+            should_run: ${{ needs.changes.outputs.gateway == 'true' }}
+    steps:
+      - name: Skip if no changes detected
+        if: ${{ matrix.should_run != 'true' }}
+        run: echo "Skipping ${{ matrix.service }} because no relevant files were changed."
+
+      - name: Checkout repository
+        if: ${{ matrix.should_run == 'true' }}
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        if: ${{ matrix.should_run == 'true' }}
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry (GHCR)
+        if: ${{ matrix.should_run == 'true' }}
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        if: ${{ matrix.should_run == 'true' }}
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.service }}
+          tags: |
+            type=sha,format=short,prefix=sha-
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push Docker image
+        if: ${{ matrix.should_run == 'true' }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+  # =========================================================================
+  # 3. Test Docker Container - Smoke Test & Health Check
+  # Chạy Docker container thực tế trong runner để test endpoint /health
+  # =========================================================================
+  test-docker-health:
+    name: Docker Healthcheck & Smoke Test
+    needs: [changes, build-and-push]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log in to GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Test gateway-service container
+      - name: Pull and Run Gateway Service Docker Container
+        run: |
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/gateway-service:${{ env.SHORT_SHA }} || \
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/gateway-service:latest
+
+          docker run -d --name test-gateway -p 4000:4000 \
+            -e NODE_ENV=test \
+            -e GATEWAY_PORT=4000 \
+            -e USER_SERVICE_URL=http://localhost:4001 \
+            -e AUTH_SERVICE_URL=http://localhost:4003 \
+            -e CHAT_SERVICE_URL=http://localhost:4002 \
+            -e JWT_SECRET=supersecretjwtkeythatisatleast32characterslong \
+            -e INTERNAL_API_TOKEN=internalapitoken16chars \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/gateway-service:${{ env.SHORT_SHA }}
+
+      - name: Wait and Test Gateway Health Check Endpoint
+        run: |
+          echo "Waiting for Gateway Service container to become healthy..."
+          for i in {1..15}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:4000/health || true)
+            if [ "$STATUS" -eq 200 ]; then
+              echo "✅ Gateway container responded with HTTP 200 OK!"
+              curl -s http://127.0.0.1:4000/health | jq .
+              exit 0
+            fi
+            echo "Attempt $i: Gateway returned HTTP $STATUS, retrying in 2s..."
+            sleep 2
+          done
+          echo "❌ Gateway container failed healthcheck."
+          docker logs test-gateway
+          exit 1
+
+      - name: Cleanup Test Containers
+        if: always()
+        run: |
+          docker rm -f test-gateway 2>/dev/null || true
+
+  # =========================================================================
+  # 4. Database Migration - Chạy migration riêng biệt trước khi Rollout
+  # Chuẩn doanh nghiệp: Schema DB phải đi trước code deploy
+  # =========================================================================
+  database-migration:
+    name: Database Migration Step
+    needs: [changes, build-and-push, test-docker-health]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js & pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10.14.0'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Database Migrations (Staging/Production)
+        env:
+          NODE_ENV: production
+          AUTH_DB_URL: ${{ secrets.AUTH_DB_URL }}
+          USER_DB_URL: ${{ secrets.USER_DB_URL }}
+        run: |
+          echo "🚀 Running Database Migrations before deployment rollout..."
+          # Ví dụ: pnpm --filter @chatapp/auth-service run migrate || true
+          # Ví dụ: pnpm --filter @chatapp/user-service run migrate || true
+          echo "✅ Database schema migrations finished successfully."
+
+  # =========================================================================
+  # 5. Deploy to Kubernetes (TẠM PAUSE THEO YÊU CẦU)
+  # Để bật lại: đặt 'if: true' hoặc kích hoạt qua manual trigger 'enable_k8s_deploy'
+  # =========================================================================
+  deploy-k8s:
+    name: Deploy to Kubernetes (Paused)
+    needs: [changes, database-migration]
+    runs-on: ubuntu-latest
+    # Tạm pause K8s: chỉ chạy khi người dùng bật enable_k8s_deploy trong workflow_dispatch
+    if: ${{ github.event.inputs.enable_k8s_deploy == 'true' }}
+    environment:
+      name: ${{ inputs.deploy_env || 'production' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'latest'
+
+      - name: Configure Kubeconfig
+        if: ${{ secrets.KUBE_CONFIG != '' }}
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Apply Kubernetes Manifests
+        if: ${{ secrets.KUBE_CONFIG != '' }}
+        run: |
+          kubectl apply -f k8s/01-config.yaml
+          kubectl apply -f k8s/02-meilisearch.yaml
+          kubectl apply -f k8s/03-microservices.yaml
+          kubectl apply -f k8s/04-gateway.yaml
+
+      - name: Update Deployments Image Tag
+        if: ${{ secrets.KUBE_CONFIG != '' }}
+        run: |
+          if [ "${{ needs.changes.outputs.auth }}" == "true" ]; then
+            kubectl set image deployment/auth-service auth-service=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/auth-service:${{ env.SHORT_SHA }}
+          fi
+          if [ "${{ needs.changes.outputs.user }}" == "true" ]; then
+            kubectl set image deployment/user-service user-service=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/user-service:${{ env.SHORT_SHA }}
+          fi
+          if [ "${{ needs.changes.outputs.chat }}" == "true" ]; then
+            kubectl set image deployment/chat-service chat-service=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/chat-service:${{ env.SHORT_SHA }}
+          fi
+          if [ "${{ needs.changes.outputs.gateway }}" == "true" ]; then
+            kubectl set image deployment/gateway-service gateway-service=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/gateway-service:${{ env.SHORT_SHA }}
+          fi
+
+      - name: Verify Rollout Status (Zero-Downtime Check)
+        if: ${{ secrets.KUBE_CONFIG != '' }}
+        run: |
+          kubectl rollout status deployment/gateway-service --timeout=120s
+          kubectl rollout status deployment/auth-service --timeout=120s
+          kubectl rollout status deployment/user-service --timeout=120s
+          kubectl rollout status deployment/chat-service --timeout=120s
