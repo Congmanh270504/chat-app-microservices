@@ -22,7 +22,12 @@ export const conversationService = {
       try {
         const creatorId = input.participantIds[0];
         const eventText = input.title ? `Đã tạo nhóm "${input.title}"` : 'Đã tạo nhóm';
-        const eventMsg = await messageRepository.create(conversation.id, creatorId, eventText, true);
+        const eventMsg = await messageRepository.create(
+          conversation.id,
+          creatorId,
+          eventText,
+          true,
+        );
         await conversationRepository.touchConversation(
           conversation.id,
           eventText,

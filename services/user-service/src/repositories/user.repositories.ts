@@ -82,7 +82,7 @@ export class UserRepository {
         email: payload.email,
         role: payload.role,
         displayName: payload.displayName,
-        image_url:payload.image_url,
+        image_url: payload.image_url,
       },
       { where: { id }, returning: true },
     );

@@ -129,18 +129,30 @@ export const authProxyService = {
     }
   },
 
-  async changePassword(payload: ChangePasswordPayload): Promise<{ success: boolean; message: string }> {
+  async changePassword(
+    payload: ChangePasswordPayload,
+  ): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await client.post<{ success: boolean; message: string }>('/auth/change-password', payload, authHeader);
+      const response = await client.post<{ success: boolean; message: string }>(
+        '/auth/change-password',
+        payload,
+        authHeader,
+      );
       return response.data;
     } catch (error) {
       return handleAxiosError(error);
     }
   },
 
-  async resetPassword(payload: ResetPasswordPayload): Promise<{ success: boolean; message: string }> {
+  async resetPassword(
+    payload: ResetPasswordPayload,
+  ): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await client.post<{ success: boolean; message: string }>('/auth/reset-password', payload, authHeader);
+      const response = await client.post<{ success: boolean; message: string }>(
+        '/auth/reset-password',
+        payload,
+        authHeader,
+      );
       return response.data;
     } catch (error) {
       return handleAxiosError(error);
@@ -156,4 +168,3 @@ export const authProxyService = {
     }
   },
 };
-

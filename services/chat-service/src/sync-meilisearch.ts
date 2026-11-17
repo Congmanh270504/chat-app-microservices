@@ -85,4 +85,3 @@ async function syncAllMessages() {
 }
 
 syncAllMessages().catch(console.error);
-

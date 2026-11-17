@@ -15,10 +15,13 @@ export const registerRoutes = (app: Router) => {
         'CREATE TABLE IF NOT EXISTS db_pings (id INT PRIMARY KEY, pinged_at DATETIME, note VARCHAR(50))',
       );
 
-     await sequelize.query('REPLACE INTO db_pings (id, pinged_at, note) VALUES (1, NOW(), :note)', {
-       replacements: { note: 'keep-alive from qstash' },
-     });
-     
+      await sequelize.query(
+        'REPLACE INTO db_pings (id, pinged_at, note) VALUES (1, NOW(), :note)',
+        {
+          replacements: { note: 'keep-alive from qstash' },
+        },
+      );
+
       res.status(200).json({ status: 'ok', service: 'auth-service', db: 'mysql' });
     } catch (error: any) {
       res.status(500).json({ status: 'error', service: 'auth-service', message: error.message });

@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: meilisearch
+  labels:
+    app: meilisearch
+    app.kubernetes.io/part-of: chatapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: meilisearch
+  template:
+    metadata:
+      labels:
+        app: meilisearch
+    spec:
+      containers:
+        - name: meilisearch
+          image: getmeili/meilisearch:v1.12
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: MEILI_ENV
+              value: "development"
+            - name: MEILI_MASTER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: chatapp-secret
+                  key: MEILISEARCH_MASTER_KEY
+          ports:
+            - containerPort: 7700
+              name: http
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: meilisearch
+  labels:
+    app: meilisearch
+    app.kubernetes.io/part-of: chatapp
+spec:
+  type: ClusterIP
+  ports:
+    - port: 7700
+      targetPort: 7700
+      name: http
+  selector:
+    app: meilisearch

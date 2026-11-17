@@ -60,7 +60,7 @@ async function seed() {
         passwordHash,
       });
       console.log(
-        `${created ? 'Created' : 'Updated'} credentials for: ${userData.displayName} (${userData.email})`
+        `${created ? 'Created' : 'Updated'} credentials for: ${userData.displayName} (${userData.email})`,
       );
     }
 

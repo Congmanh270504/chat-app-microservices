@@ -100,9 +100,7 @@ export const conversationRepository = {
   async findSummaries(filter: ConversationFilter): Promise<ConversationSummary[]> {
     const collection = await getCollection();
     const query = filter.participantId ? { participantIds: { $in: [filter.participantId] } } : {};
-    const cursor = collection
-      .find(query)
-      .sort({ lastMessageAt: -1, updatedAt: -1 });
+    const cursor = collection.find(query).sort({ lastMessageAt: -1, updatedAt: -1 });
     const results = await cursor.toArray();
     return results.map((doc) => toConversationSummary(doc));
   },
@@ -235,4 +233,3 @@ export const conversationRepository = {
     ]);
   },
 };
-

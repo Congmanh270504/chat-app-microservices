@@ -241,6 +241,8 @@ jobs:
     runs-on: ubuntu-latest
     # Tạm pause K8s: chỉ chạy khi người dùng bật enable_k8s_deploy trong workflow_dispatch
     if: ${{ github.event.inputs.enable_k8s_deploy == 'true' }}
+    env:
+      KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
     environment:
       name: ${{ inputs.deploy_env || 'production' }}
     steps:
@@ -253,22 +255,22 @@ jobs:
           version: 'latest'
 
       - name: Configure Kubeconfig
-        if: ${{ secrets.KUBE_CONFIG != '' }}
+        if: env.KUBE_CONFIG != ''
         run: |
           mkdir -p ~/.kube
-          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > ~/.kube/config
+          echo "$KUBE_CONFIG" | base64 -d > ~/.kube/config
           chmod 600 ~/.kube/config
 
       - name: Apply Kubernetes Manifests
-        if: ${{ secrets.KUBE_CONFIG != '' }}
+        if: env.KUBE_CONFIG != ''
         run: |
-          kubectl apply -f k8s/01-config.yaml
+          kubectl apply -f k8s/01-configmap.yaml
           kubectl apply -f k8s/02-meilisearch.yaml
           kubectl apply -f k8s/03-microservices.yaml
           kubectl apply -f k8s/04-gateway.yaml
 
       - name: Update Deployments Image Tag
-        if: ${{ secrets.KUBE_CONFIG != '' }}
+        if: env.KUBE_CONFIG != ''
         run: |
           if [ "${{ needs.changes.outputs.auth }}" == "true" ]; then
             kubectl set image deployment/auth-service auth-service=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/auth-service:${{ env.SHORT_SHA }}
@@ -284,7 +286,7 @@ jobs:
           fi
 
       - name: Verify Rollout Status (Zero-Downtime Check)
-        if: ${{ secrets.KUBE_CONFIG != '' }}
+        if: env.KUBE_CONFIG != ''
         run: |
           kubectl rollout status deployment/gateway-service --timeout=120s
           kubectl rollout status deployment/auth-service --timeout=120s

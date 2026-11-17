@@ -127,9 +127,12 @@ export const chatProxyService = {
 
   async getUnreadCount(userId: string): Promise<number> {
     try {
-      const response = await client.get<{ data: { count: number } }>('/conversations/unread-count', {
-        headers: { [USER_ID_HEADER]: userId },
-      });
+      const response = await client.get<{ data: { count: number } }>(
+        '/conversations/unread-count',
+        {
+          headers: { [USER_ID_HEADER]: userId },
+        },
+      );
       return response.data.data.count;
     } catch (error) {
       return handleAxiosError(error);
@@ -205,10 +208,7 @@ export const chatProxyService = {
     }
   },
 
-  async markConversationAsRead(
-    conversationId: string,
-    userId: string,
-  ): Promise<ConversationDto> {
+  async markConversationAsRead(conversationId: string, userId: string): Promise<ConversationDto> {
     try {
       const response = await client.patch<ConversationResponse>(
         `/conversations/${conversationId}/read`,

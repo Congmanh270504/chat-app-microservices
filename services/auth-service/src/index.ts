@@ -21,7 +21,6 @@ const main = async () => {
       logger.info({ port }, 'Auth service is running');
     });
 
-
     const shutdown = () => {
       logger.info('Shutting down auth service...');
 

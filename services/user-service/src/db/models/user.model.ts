@@ -17,7 +17,6 @@ export class UserModel extends Model<User, UserCreationAttributes> implements Us
   declare updatedAt: Date;
 }
 
-
 UserModel.init(
   {
     id: {

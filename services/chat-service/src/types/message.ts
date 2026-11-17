@@ -18,7 +18,7 @@ export interface Message {
   conversationId: string;
   senderId: string;
   body: string;
-  event : boolean;
+  event: boolean;
   createdAt: Date;
   reactions: Reaction[];
   status: MessageStatus;

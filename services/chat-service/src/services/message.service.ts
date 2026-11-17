@@ -73,7 +73,8 @@ export const messageService = {
     const messages = await messageRepository.findByConversation(conversationId, options);
 
     // Compute status according to partner's read watermark
-    const partnerReads = conversation.participantReads?.filter((p) => p.userId !== requesterId) ?? [];
+    const partnerReads =
+      conversation.participantReads?.filter((p) => p.userId !== requesterId) ?? [];
     const maxPartnerReadTime = partnerReads.reduce((max, curr) => {
       const t = new Date(curr.lastReadAt).getTime();
       return t > max ? t : max;

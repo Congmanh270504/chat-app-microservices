@@ -97,12 +97,7 @@ export const addReactionHandler: RequestHandler = asyncHandler(async (req, res) 
   const { id, messageId } = messageParamsSchema.parse(req.params);
   const payload = addReactionBodySchema.parse(req.body);
 
-  const updatedMessage = await messageService.addReaction(
-    id,
-    messageId,
-    user.id,
-    payload.emoji,
-  );
+  const updatedMessage = await messageService.addReaction(id, messageId, user.id, payload.emoji);
 
   res.status(200).json({ data: updatedMessage });
 });
@@ -119,15 +114,10 @@ export const searchMessagesHandler: RequestHandler = asyncHandler(async (req, re
   const conversationId = parsedConversation(req.params);
   const query = searchMessagesQuerySchema.parse(req.query);
 
-  const searchResults = await messageService.searchMessages(
-    conversationId,
-    user.id,
-    query.q,
-    {
-      limit: query.limit,
-      offset: query.offset,
-    },
-  );
+  const searchResults = await messageService.searchMessages(conversationId, user.id, query.q, {
+    limit: query.limit,
+    offset: query.offset,
+  });
 
   res.status(200).json({ data: searchResults });
 });

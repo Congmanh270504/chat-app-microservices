@@ -36,7 +36,9 @@ export const registerRoutes = (app: Router) => {
       results.redis = `error: ${err.message}`;
     }
 
-    const hasError = Object.values(results).some((status) => typeof status === 'string' && status.startsWith('error'));
+    const hasError = Object.values(results).some(
+      (status) => typeof status === 'string' && status.startsWith('error'),
+    );
     res.status(hasError ? 207 : 200).json({
       status: hasError ? 'partial' : 'ok',
       service: 'chat-service',

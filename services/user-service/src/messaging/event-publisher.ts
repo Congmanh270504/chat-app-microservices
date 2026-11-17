@@ -108,4 +108,3 @@ export const publishUserCreatedEvent = async (payload: UserCreatedPayload) => {
 export const publishUserDeletedEvent = async (payload: UserCreatedPayload) => {
   // TODO: implement user deleted event publishing
 };
-
