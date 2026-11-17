@@ -40,10 +40,10 @@ jobs:
     name: Detect Changed Services
     runs-on: ubuntu-latest
     outputs:
-      auth: ${{ steps.filter.outputs.auth == 'true' || inputs.force_build_all }}
-      user: ${{ steps.filter.outputs.user == 'true' || inputs.force_build_all }}
-      chat: ${{ steps.filter.outputs.chat == 'true' || inputs.force_build_all }}
-      gateway: ${{ steps.filter.outputs.gateway == 'true' || inputs.force_build_all }}
+      auth: ${{ steps.filter.outputs.auth == 'true' || steps.filter.outputs.workflow == 'true' || inputs.force_build_all }}
+      user: ${{ steps.filter.outputs.user == 'true' || steps.filter.outputs.workflow == 'true' || inputs.force_build_all }}
+      chat: ${{ steps.filter.outputs.chat == 'true' || steps.filter.outputs.workflow == 'true' || inputs.force_build_all }}
+      gateway: ${{ steps.filter.outputs.gateway == 'true' || steps.filter.outputs.workflow == 'true' || inputs.force_build_all }}
       image_prefix: ${{ steps.vars.outputs.image_prefix }}
       short_sha: ${{ steps.vars.outputs.short_sha }}
     steps:
@@ -83,6 +83,8 @@ jobs:
               - 'services/gateway-service/**'
               - 'packages/common/**'
               - 'pnpm-lock.yaml'
+            workflow:
+              - '.github/workflows/cd.yml'
 
   # =========================================================================
   # 2. Build Docker images & Push lên GHCR
@@ -178,11 +180,23 @@ jobs:
 
       # Test gateway-service container
       - name: Pull and Run Gateway Service Docker Container
+        id: run-container
         run: |
-          IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/gateway-service:${{ env.SHORT_SHA }}"
-          FALLBACK="${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/gateway-service:latest"
-          docker pull $IMAGE || docker pull $FALLBACK
+          if [ "${{ needs.changes.outputs.gateway }}" == "true" ]; then
+            IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/gateway-service:${{ env.SHORT_SHA }}"
+            echo "Gateway service was built in this run. Pulling $IMAGE"
+            docker pull $IMAGE
+          else
+            IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/gateway-service:latest"
+            echo "Gateway service was not changed in this commit. Attempting to pull: $IMAGE"
+            if ! docker pull $IMAGE; then
+              echo "⚠️ No existing gateway-service image found in registry. Skipping container healthcheck since gateway was not modified in this commit."
+              echo "skip_test=true" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+          fi
 
+          echo "Running test container with $IMAGE..."
           docker run -d --name test-gateway -p 4000:4000 \
             -e NODE_ENV=test \
             -e GATEWAY_PORT=4000 \
@@ -191,18 +205,10 @@ jobs:
             -e CHAT_SERVICE_URL=http://localhost:4002 \
             -e JWT_SECRET=supersecretjwtkeythatisatleast32characterslong \
             -e INTERNAL_API_TOKEN=internalapitoken16chars \
-            $IMAGE 2>/dev/null || \
-          docker run -d --name test-gateway -p 4000:4000 \
-            -e NODE_ENV=test \
-            -e GATEWAY_PORT=4000 \
-            -e USER_SERVICE_URL=http://localhost:4001 \
-            -e AUTH_SERVICE_URL=http://localhost:4003 \
-            -e CHAT_SERVICE_URL=http://localhost:4002 \
-            -e JWT_SECRET=supersecretjwtkeythatisatleast32characterslong \
-            -e INTERNAL_API_TOKEN=internalapitoken16chars \
-            $FALLBACK
+            $IMAGE
 
       - name: Wait and Test Gateway Health Check Endpoint
+        if: steps.run-container.outputs.skip_test != 'true'
         run: |
           echo "Waiting for Gateway Service container to become healthy..."
           for i in {1..15}; do
@@ -220,7 +226,7 @@ jobs:
           exit 1
 
       - name: Cleanup Test Containers
-        if: always()
+        if: always() && steps.run-container.outputs.skip_test != 'true'
         run: |
           docker rm -f test-gateway 2>/dev/null || true
 
