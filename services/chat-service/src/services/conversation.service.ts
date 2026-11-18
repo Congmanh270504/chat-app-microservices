@@ -52,7 +52,10 @@ export const conversationService = {
     pusherServer
       .trigger(userChannels, 'conversation:new', conversation)
       .catch((error) => {
-        console.error('Failed to trigger conversation:new Pusher event:', error);
+        console.error(
+          'Failed to trigger conversation:new Pusher event:',
+          error,
+        );
       });
 
     return conversation;
@@ -122,7 +125,10 @@ export const conversationService = {
         lastMessageStatus: res.conversation.lastMessageStatus,
       })
       .catch((error) => {
-        console.error('Failed to trigger conversation:read Pusher event:', error);
+        console.error(
+          'Failed to trigger conversation:read Pusher event:',
+          error,
+        );
       });
 
     return res;
