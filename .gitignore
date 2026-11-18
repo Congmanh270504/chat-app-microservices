@@ -50,9 +50,12 @@ temp/
 .eslintcache
 .prettiercache
 
-# Kubernetes secrets (Do not commit real credentials)
+# Kubernetes secrets & sensitive configs (Do not commit real credentials / IP / domain)
 k8s/01-config.yaml
 k8s/kubeconfig.yaml
 k8s/*secret*.yaml
 !k8s/*secret*.example.yaml
-interview.md
+k8s/*ingress*.yaml
+!k8s/*ingress*.example.yaml
+
+/docs

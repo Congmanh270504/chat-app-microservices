@@ -98,6 +98,12 @@ export function ChatList({ initialConversations = [], currentUserId: propUserId 
   const currentUserId = propUserId || session?.user?.id;
 
   React.useEffect(() => {
+    if ((session as any)?.error === 'RefreshTokenError') {
+      router.push('/login');
+    }
+  }, [session, router]);
+
+  React.useEffect(() => {
     if (!currentUserId) return;
 
     const userChannelName = `user-${currentUserId}`;
@@ -111,11 +117,39 @@ export function ChatList({ initialConversations = [], currentUserId: propUserId 
     channel.bind('new-message', handleRefresh);
     channel.bind('conversation:read', handleRefresh);
 
+    const handleLocalMessage = (event: Event) => {
+      const customEvent = event as CustomEvent<{
+        conversationId: string;
+        body: string;
+        createdAt: string;
+      }>;
+      if (!customEvent.detail) return;
+      const { conversationId, body, createdAt } = customEvent.detail;
+      setConversations((prev) => {
+        const idx = prev.findIndex((c) => c.id === conversationId);
+        if (idx === -1) return prev;
+        const target = {
+          ...prev[idx],
+          lastMessagePreview: body,
+          lastMessageAt: createdAt,
+        };
+        const rest = prev.filter((_, i) => i !== idx);
+        return [target, ...rest];
+      });
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('chat:local-message', handleLocalMessage);
+    }
+
     return () => {
       channel.unbind('conversation:new', handleRefresh);
       channel.unbind('new-message', handleRefresh);
       channel.unbind('conversation:read', handleRefresh);
       pusherClient.unsubscribe(userChannelName);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('chat:local-message', handleLocalMessage);
+      }
     };
   }, [currentUserId, refreshConversations]);
 

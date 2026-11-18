@@ -55,22 +55,16 @@ export const messageService = {
       console.error('Failed to index message in Meilisearch:', err);
     });
 
-    try {
-      await pusherServer.trigger(
-        `chat-${conversationId}`,
-        'new-message',
-        message,
-      );
-      for (const participantId of conversation.participantIds) {
-        await pusherServer.trigger(
-          `user-${participantId}`,
-          'new-message',
-          message,
-        );
-      }
-    } catch (error) {
-      console.error('Failed to trigger Pusher event:', error);
-    }
+    // Trigger Pusher for all target channels simultaneously in a single batch call (non-blocking)
+    const targetChannels = [
+      `chat-${conversationId}`,
+      ...conversation.participantIds.map((id) => `user-${id}`),
+    ];
+    pusherServer
+      .trigger(targetChannels, 'new-message', message)
+      .catch((error) => {
+        console.error('Failed to trigger Pusher event:', error);
+      });
 
     return message;
   },
@@ -149,24 +143,18 @@ export const messageService = {
       throw new HttpError(500, 'Failed to update reaction');
     }
 
-    try {
-      await pusherServer.trigger(`chat-${conversationId}`, 'message-reaction', {
+    const targetChannels = [
+      `chat-${conversationId}`,
+      ...conversation.participantIds.map((id) => `user-${id}`),
+    ];
+    pusherServer
+      .trigger(targetChannels, 'message-reaction', {
         messageId,
         reactions: updatedMessage.reactions,
+      })
+      .catch((error) => {
+        console.error('Failed to trigger Pusher event for reaction:', error);
       });
-      for (const participantId of conversation.participantIds) {
-        await pusherServer.trigger(
-          `user-${participantId}`,
-          'message-reaction',
-          {
-            messageId,
-            reactions: updatedMessage.reactions,
-          },
-        );
-      }
-    } catch (error) {
-      console.error('Failed to trigger Pusher event for reaction:', error);
-    }
 
     return updatedMessage;
   },

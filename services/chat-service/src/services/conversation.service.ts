@@ -48,17 +48,12 @@ export const conversationService = {
 
     await conversationCache.set(conversation);
 
-    try {
-      for (const participantId of conversation.participantIds) {
-        await pusherServer.trigger(
-          `user-${participantId}`,
-          'conversation:new',
-          conversation,
-        );
-      }
-    } catch (error) {
-      console.error('Failed to trigger conversation:new Pusher event:', error);
-    }
+    const userChannels = conversation.participantIds.map((id) => `user-${id}`);
+    pusherServer
+      .trigger(userChannels, 'conversation:new', conversation)
+      .catch((error) => {
+        console.error('Failed to trigger conversation:new Pusher event:', error);
+      });
 
     return conversation;
   },
@@ -115,32 +110,20 @@ export const conversationService = {
 
     await conversationCache.delete(conversationId);
 
-    try {
-      await pusherServer.trigger(
-        `chat-${conversationId}`,
-        'conversation:read',
-        {
-          conversationId,
-          readerId: userId,
-          lastReadAt: res.lastReadAt,
-        },
-      );
-
-      for (const participantId of res.conversation.participantIds) {
-        await pusherServer.trigger(
-          `user-${participantId}`,
-          'conversation:read',
-          {
-            conversationId,
-            readerId: userId,
-            lastReadAt: res.lastReadAt,
-            lastMessageStatus: res.conversation.lastMessageStatus,
-          },
-        );
-      }
-    } catch (error) {
-      console.error('Failed to trigger conversation:read Pusher event:', error);
-    }
+    const targetChannels = [
+      `chat-${conversationId}`,
+      ...res.conversation.participantIds.map((id) => `user-${id}`),
+    ];
+    pusherServer
+      .trigger(targetChannels, 'conversation:read', {
+        conversationId,
+        readerId: userId,
+        lastReadAt: res.lastReadAt,
+        lastMessageStatus: res.conversation.lastMessageStatus,
+      })
+      .catch((error) => {
+        console.error('Failed to trigger conversation:read Pusher event:', error);
+      });
 
     return res;
   },

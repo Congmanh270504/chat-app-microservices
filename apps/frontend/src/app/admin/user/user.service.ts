@@ -1,10 +1,7 @@
 import { User, CreateUserInput } from '@/app/admin/user/user.type';
 import { auth } from '@/lib/auth';
 
-const USER_SERVICE_URL =
-    process.env.USER_SERVICE_URL ||
-    process.env.NEXT_PUBLIC_USER_SERVICE_URL ||
-    'http://127.0.0.1:4000/users';
+const USER_SERVICE_URL = `${process.env.GATE_WAY_URL}/users`;
 
 const getAuthHeaders = async (): Promise<Record<string, string>> => {
     try {

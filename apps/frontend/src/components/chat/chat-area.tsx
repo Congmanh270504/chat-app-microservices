@@ -696,6 +696,18 @@ export function ChatArea({
     setMessages((prev) => [...prev, optimisticMessage]);
     setIsSending(true);
 
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('chat:local-message', {
+          detail: {
+            conversationId: chatId,
+            body: text,
+            createdAt: new Date().toISOString(),
+          },
+        }),
+      );
+    }
+
     try {
       if (isDraftRef.current && (draftRecipientId || recipient?.id)) {
         const targetUserId = draftRecipientId || recipient?.id;

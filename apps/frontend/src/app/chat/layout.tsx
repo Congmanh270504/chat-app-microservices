@@ -1,11 +1,17 @@
 import { auth } from '@/lib/auth';
 import { ChatList } from '@/components/chat/chat-list';
 import { getPopulatedConversationsAction } from '@/app/chat/chat.actions';
+import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ChatLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
+
+  if (!session?.user || (session as any)?.error === 'RefreshTokenError') {
+    redirect('/login');
+  }
+
   const res = await getPopulatedConversationsAction();
   const conversations = res.success ? res.data || [] : [];
 

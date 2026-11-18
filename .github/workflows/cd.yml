@@ -296,7 +296,6 @@ jobs:
       - name: Apply Kubernetes Manifests
         if: env.KUBE_CONFIG != ''
         run: |
-          kubectl apply -f k8s/01-configmap.yaml
           kubectl apply -f k8s/02-meilisearch.yaml
           kubectl apply -f k8s/03-microservices.yaml
           kubectl apply -f k8s/04-gateway.yaml

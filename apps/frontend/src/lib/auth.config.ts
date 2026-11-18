@@ -1,5 +1,71 @@
 import type { NextAuthConfig } from 'next-auth';
 
+function decodeJwt(
+    token?: string,
+): { exp?: number; sub?: string; email?: string } | null {
+    if (!token || typeof token !== 'string') return null;
+    try {
+        const parts = token.split('.');
+        if (parts.length < 2) return null;
+        const payloadBase64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+        if (typeof Buffer !== 'undefined') {
+            return JSON.parse(
+                Buffer.from(payloadBase64, 'base64').toString('utf-8'),
+            );
+        }
+        if (typeof atob === 'function') {
+            const raw = atob(payloadBase64);
+            const bytes = Uint8Array.from(raw, (c) => c.charCodeAt(0));
+            return JSON.parse(new TextDecoder().decode(bytes));
+        }
+        return null;
+    } catch {
+        return null;
+    }
+}
+
+async function refreshAccessToken(token: any) {
+    try {
+        const gateWayURL = process.env.GATE_WAY_URL || 'http://127.0.0.1:4000';
+        const res = await fetch(`${gateWayURL}/auth/refresh`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                refreshToken: token.refreshToken,
+            }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok || !data.accessToken) {
+            console.error('[auth] Failed to refresh access token, response:', data);
+            return {
+                ...token,
+                error: 'RefreshTokenError',
+            };
+        }
+
+        const decoded = decodeJwt(data.accessToken);
+        const newExpires = decoded?.exp
+            ? decoded.exp * 1000
+            : Date.now() + 24 * 60 * 60 * 1000;
+
+        return {
+            ...token,
+            accessToken: data.accessToken,
+            refreshToken: data.refreshToken || token.refreshToken,
+            accessTokenExpires: newExpires,
+            error: undefined,
+        };
+    } catch (error) {
+        console.error('[auth] Error in refreshAccessToken:', error);
+        return {
+            ...token,
+            error: 'RefreshTokenError',
+        };
+    }
+}
+
 export const authConfig = {
     pages: {
         signIn: '/login',
@@ -56,13 +122,14 @@ export const authConfig = {
         },
         authorized({ auth, request: { nextUrl } }) {
             const isLoggedIn = !!auth?.user;
+            const hasRefreshError = (auth as any)?.error === 'RefreshTokenError';
             const isProtected =
                 nextUrl.pathname.startsWith('/chat') ||
                 nextUrl.pathname.startsWith('/admin');
             if (isProtected) {
-                if (isLoggedIn) return true;
-                return false; // Redirect unauthenticated users to login page
-            } else if (isLoggedIn) {
+                if (isLoggedIn && !hasRefreshError) return true;
+                return false; // Redirect unauthenticated users or users with invalid/expired tokens to login page
+            } else if (isLoggedIn && !hasRefreshError) {
                 const isAuthRoute =
                     nextUrl.pathname === '/login' ||
                     nextUrl.pathname === '/register' ||
@@ -85,12 +152,46 @@ export const authConfig = {
                 token.role =
                     (user as any).role ||
                     (user.email === 'admin@gmail.com' ? 'ADMIN' : 'USER');
+
+                if (token.accessToken) {
+                    const decoded = decodeJwt(token.accessToken as string);
+                    token.accessTokenExpires = decoded?.exp
+                        ? decoded.exp * 1000
+                        : Date.now() + 24 * 60 * 60 * 1000;
+                }
+                return token;
             }
+
             if (!token.role) {
                 token.role =
                     token.email === 'admin@gmail.com' ? 'ADMIN' : 'USER';
             }
-            return token;
+
+            // Return previous token if the access token has not expired yet (refresh 2 minutes before expiration)
+            const expiresAt =
+                (token.accessTokenExpires as number) ||
+                (token.accessToken
+                    ? decodeJwt(token.accessToken as string)?.exp
+                        ? decodeJwt(token.accessToken as string)!.exp! * 1000
+                        : 0
+                    : 0);
+
+            const isExpired =
+                !expiresAt || Date.now() >= expiresAt - 2 * 60 * 1000;
+
+            if (!isExpired) {
+                return token;
+            }
+
+            // Access token has expired, try to update it using refresh token
+            if (!token.refreshToken) {
+                return {
+                    ...token,
+                    error: 'RefreshTokenError',
+                };
+            }
+
+            return await refreshAccessToken(token);
         },
         async session({ session, token }) {
             if (token) {
@@ -104,9 +205,10 @@ export const authConfig = {
                         token.role ||
                         (token.email === 'admin@gmail.com' ? 'ADMIN' : 'USER');
                 }
-                // Add tokens to session so client/server can access them
+                // Add tokens and error to session so client/server can access them
                 (session as any).accessToken = token.accessToken;
                 (session as any).refreshToken = token.refreshToken;
+                (session as any).error = token.error;
             }
             return session;
         },
